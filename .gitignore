@@ -15,3 +15,8 @@ next-env.d.ts
 
 # private notes, not part of the app
 research/
+
+# logs and certs
+*.pem
+npm-debug.log*
+/coverage

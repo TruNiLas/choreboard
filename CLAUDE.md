@@ -1,3 +1,5 @@
+@AGENTS.md
+
 ## Grading contract — EdTech Challenge (never remove or break this)
 An automated bot grades this app on its public Vercel URL, acting like a stranger.
 
