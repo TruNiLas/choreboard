@@ -1,0 +1,58 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { cleanJoinCode, type FormState } from "@/lib/form-state";
+import { createClient } from "@/lib/supabase/server";
+
+function readCredentials(formData: FormData) {
+  return {
+    email: String(formData.get("email") ?? "").trim(),
+    password: String(formData.get("password") ?? ""),
+    join: cleanJoinCode(formData.get("join")),
+  };
+}
+
+// After sign-up and login the user always lands on /app. An invite code rides along so
+// /app can offer to join that flat.
+function appPath(join: string | null) {
+  return join ? `/app?join=${join}` : "/app";
+}
+
+export async function signUp(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { email, password, join } = readCredentials(formData);
+  if (!email || !password) return { error: "Enter an email and a password.", email };
+  if (password.length < 6) return { error: "Use at least 6 characters for the password.", email };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) return { error: error.message, email };
+
+  // No session means Supabase still requires email confirmation, which this app cannot
+  // complete. Say so instead of pretending an email is on its way.
+  if (!data.session) {
+    return {
+      error:
+        "Your account was created, but email confirmation is still switched on for this app, so you can't log in yet.",
+      email,
+    };
+  }
+
+  redirect(appPath(join));
+}
+
+export async function logIn(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { email, password, join } = readCredentials(formData);
+  if (!email || !password) return { error: "Enter your email and password.", email };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return { error: error.message, email };
+
+  redirect(appPath(join));
+}
+
+export async function logOut() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/");
+}
