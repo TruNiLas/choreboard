@@ -47,7 +47,7 @@ export default async function LandingPage() {
         </div>
 
         <figure className="rounded-2xl bg-board p-5 text-board-foreground shadow-lg" aria-label="Example flat leaderboard">
-          <p className="font-mono text-sm uppercase tracking-widest text-board-highlight">Calle Serrano 12 · October</p>
+          <p className="font-mono text-sm uppercase tracking-widest text-board-highlight">Flat 3B · October</p>
           <ol className="mt-3 divide-y divide-white/10 font-mono">
             {SAMPLE_BOARD.map((row, index) => (
               <li key={row.name} className="flex items-center justify-between py-2">
