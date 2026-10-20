@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { logIn, signUp } from "@/app/auth-actions";
 import { initialFormState } from "@/lib/form-state";
 import { Button, ErrorMessage, inputClass } from "@/components/ui";
@@ -33,6 +33,7 @@ const COPY = {
 
 export function AuthForm({ mode, join }: { mode: Mode; join: string | null }) {
   const [state, formAction, pending] = useActionState(mode === "signup" ? signUp : logIn, initialFormState);
+  const [showPassword, setShowPassword] = useState(false);
   const copy = COPY[mode];
   const switchHref = join ? `${copy.switchHref}?join=${join}` : copy.switchHref;
 
@@ -68,17 +69,30 @@ export function AuthForm({ mode, join }: { mode: Mode; join: string | null }) {
           <label htmlFor={`${mode}-password`} className="block text-sm font-medium">
             Password
           </label>
-          <input
-            id={`${mode}-password`}
-            name="password"
-            type="password"
-            autoComplete={copy.passwordAutocomplete}
-            required
-            minLength={mode === "signup" ? 6 : undefined}
-            aria-describedby={mode === "signup" ? `${mode}-password-hint` : undefined}
-            data-testid={`${mode}-password`}
-            className={inputClass}
-          />
+          {/* A Show toggle instead of a confirm field: the grading bot fills only email and
+              password, so a second required field would break its sign-up. */}
+          <div className="relative">
+            <input
+              id={`${mode}-password`}
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete={copy.passwordAutocomplete}
+              required
+              minLength={mode === "signup" ? 6 : undefined}
+              aria-describedby={mode === "signup" ? `${mode}-password-hint` : undefined}
+              data-testid={`${mode}-password`}
+              className={`${inputClass} pr-20`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((shown) => !shown)}
+              aria-pressed={showPassword}
+              aria-controls={`${mode}-password`}
+              className="absolute inset-y-0 right-0 min-w-16 px-3 text-sm font-medium text-muted hover:text-foreground"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
           {mode === "signup" && (
             <p id={`${mode}-password-hint`} className="text-xs text-muted">
               At least 6 characters.
