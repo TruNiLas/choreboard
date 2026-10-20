@@ -39,16 +39,16 @@ export function AuthForm({ mode, join }: { mode: Mode; join: string | null }) {
 
   return (
     <div className="mx-auto w-full max-w-sm">
-      <h1 className="text-2xl font-semibold">{copy.title}</h1>
+      <h1 className="text-3xl font-semibold tracking-[-0.03em]">{copy.title}</h1>
       <p className="mt-1 text-muted">{copy.intro}</p>
       {join && (
-        <p className="mt-4 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
-          You were invited to a flat (code <span className="font-mono font-semibold">{join}</span>). You can
+        <p className="mt-4 rounded-xl bg-accent-soft px-4 py-3 text-sm">
+          You were invited to a flat (code <span className="font-semibold tracking-widest">{join}</span>). You can
           join it right after this step.
         </p>
       )}
 
-      <form action={formAction} className="mt-6 space-y-4" noValidate>
+      <form action={formAction} className="mt-8 space-y-5" noValidate>
         {join && <input type="hidden" name="join" value={join} />}
         <div className="space-y-1">
           <label htmlFor={`${mode}-email`} className="block text-sm font-medium">
@@ -88,7 +88,7 @@ export function AuthForm({ mode, join }: { mode: Mode; join: string | null }) {
               onClick={() => setShowPassword((shown) => !shown)}
               aria-pressed={showPassword}
               aria-controls={`${mode}-password`}
-              className="absolute inset-y-0 right-0 min-w-16 px-3 text-sm font-medium text-muted hover:text-foreground"
+              className="absolute inset-y-0 right-0 min-w-16 rounded-md px-3 text-sm font-medium text-muted hover:text-foreground"
             >
               {showPassword ? "Hide" : "Show"}
             </button>
@@ -107,7 +107,7 @@ export function AuthForm({ mode, join }: { mode: Mode; join: string | null }) {
         </Button>
       </form>
 
-      <p className="mt-6 text-sm text-muted">
+      <p className="mt-6 text-muted">
         {copy.switchText}{" "}
         <Link href={switchHref} className="font-medium text-foreground underline underline-offset-4">
           {copy.switchLabel}

@@ -5,7 +5,8 @@ import { ChoreForm } from "@/components/chore-form";
 import { CopyButton } from "@/components/copy-button";
 import { ForfeitForm } from "@/components/forfeit-form";
 import { JoinForm } from "@/components/join-form";
-import { Card } from "@/components/ui";
+import { LeaderboardSlab } from "@/components/leaderboard-slab";
+import { buttonLooks, Panel } from "@/components/ui";
 import { cleanJoinCode } from "@/lib/form-state";
 import { currentMonth, timeAgo } from "@/lib/month";
 import { createClient, getUserId } from "@/lib/supabase/server";
@@ -44,9 +45,9 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
     // Only happens if the sign-up trigger did not run for this account.
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-8">
-        <Card>
+        <Panel>
           <p>We couldn&apos;t find your flat. Log out and back in; if it stays this way, the flat setup failed.</p>
-        </Card>
+        </Panel>
       </main>
     );
   }
@@ -73,106 +74,107 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
   const showInvitePrompt = inviteCode && inviteCode !== flat.join_code;
 
   return (
-    <main className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6">
+    <main className="mx-auto w-full max-w-3xl pb-16 sm:px-4 sm:pt-6">
       {showInvitePrompt && (
-        <Card className="border-accent">
-          <h2 className="font-semibold">You were invited to a flat</h2>
+        <section className="mx-4 my-4 rounded-xl bg-accent-soft p-4 sm:mx-0 sm:mt-0 sm:p-5">
+          <h2 className="text-lg font-semibold">You were invited to a flat</h2>
           <p className="mt-1 text-sm text-muted">Join it to share one board with your flatmates.</p>
           <div className="mt-3">
             <JoinForm defaultCode={inviteCode} alone={alone} />
           </div>
-        </Card>
+        </section>
       )}
 
-      <Card>
-        <h1 className="text-xl font-semibold">Log a chore</h1>
-        <p className="mb-4 text-sm text-muted">Credit for what you did, or thank a flatmate who covered for you.</p>
-        <ChoreForm members={members.map((m) => ({ userId: m.user_id, name: m.display_name }))} me={me} />
-      </Card>
+      <LeaderboardSlab
+        className="sm:rounded-2xl"
+        title={<h1 className="min-w-0 truncate text-lg font-medium">{flat.name}</h1>}
+        subtitle={`${month.name}, ${month.daysLeft === 0 ? "last day" : `${month.daysLeft} days left`}`}
+        rows={leaderboard.map((row) => ({
+          key: row.userId,
+          name: nameOf(row.userId),
+          points: row.points,
+          watch: lowest?.userId === row.userId,
+        }))}
+        note={alone ? "Just you so far. Invite your flatmates below and the race is on." : undefined}
+        stub={
+          <>
+            <p className="text-sm">Lowest score on {month.lastDay} {month.name}:</p>
+            <p className="break-words text-lg font-semibold">{flat.forfeit}</p>
+          </>
+        }
+      />
 
-      <section className="rounded-2xl bg-board p-4 text-board-foreground sm:p-5" aria-labelledby="board-title">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 id="board-title" className="font-mono text-sm uppercase tracking-widest text-board-highlight">
-            {flat.name} · {month.name}
+      <div className="mt-8 space-y-10 px-4 sm:px-0">
+        <section aria-labelledby="log-title">
+          <h2 id="log-title" className="text-xl font-semibold tracking-tight">
+            Log a chore
           </h2>
-          <span className="font-mono text-xs opacity-70">
-            {month.daysLeft === 0 ? "Last day" : `${month.daysLeft} days left`}
-          </span>
-        </div>
-        <ol className="mt-3 divide-y divide-white/10">
-          {leaderboard.map((row, index) => (
-            <li key={row.userId} className="flex items-center justify-between gap-3 py-2 font-mono">
-              <span className="flex min-w-0 items-center gap-3">
-                <span className="w-5 text-right opacity-60">{index + 1}</span>
-                <span className="truncate">{nameOf(row.userId)}</span>
-              </span>
-              <span className="flex items-center gap-2">
-                {lowest?.userId === row.userId && (
-                  <span className="rounded bg-board-highlight px-1.5 text-xs text-board">on forfeit watch</span>
-                )}
-                <span className="text-lg text-board-highlight tabular-nums">{row.points}</span>
-              </span>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-3 text-sm opacity-80">
-          Lowest score on the last day of {month.name}: <span className="font-semibold">{flat.forfeit}</span>
-        </p>
-      </section>
+          <p className="mb-4 mt-1 text-muted">Credit for what you did, or kudos for a flatmate who covered for you.</p>
+          <ChoreForm members={members.map((m) => ({ userId: m.user_id, name: m.display_name }))} me={me} />
+        </section>
 
-      <Card>
-        <h2 className="font-semibold">Recent chores</h2>
-        {chores.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">Nothing logged yet. Did the dishes today? Log it above.</p>
-        ) : (
-          <ul className="mt-2 divide-y divide-border">
-            {chores.map((chore) => (
-              <li key={chore.id} data-testid="core-item" className="flex items-start justify-between gap-3 py-2">
-                <div className="min-w-0">
-                  <p className="break-words font-medium">{chore.title}</p>
-                  <p className="text-xs text-muted">
-                    {nameOf(chore.done_by)}
-                    {chore.user_id !== chore.done_by && ` · thanked by ${nameOf(chore.user_id)}`}
-                    {" · "}
-                    {timeAgo(chore.created_at)}
-                  </p>
-                </div>
-                <span className="shrink-0 font-mono text-sm text-success">+{chore.points}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <Card className="space-y-4">
-        <div>
-          <h2 className="font-semibold">{alone ? "Invite your flatmates" : "Your flat"}</h2>
-          <p className="mt-1 text-sm text-muted">
-            Send them the link, or have them type the code on their board after signing up.
-          </p>
-          <p className="mt-3 font-mono text-3xl tracking-[0.3em]" aria-label={`Flat code ${flat.join_code.split("").join(" ")}`}>
-            {flat.join_code}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <CopyButton text={inviteLink} label="Copy invite link" />
-            <a
-              href={`https://wa.me/?text=${whatsappText}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-11 items-center rounded-lg border border-border px-4 font-semibold hover:bg-background"
-            >
-              Share on WhatsApp
-            </a>
-          </div>
-          {!alone && (
-            <p className="mt-3 text-sm text-muted">
-              In this flat: {members.map((member) => nameOf(member.user_id)).join(", ")}
-            </p>
+        <section aria-labelledby="recent-title">
+          <h2 id="recent-title" className="text-xl font-semibold tracking-tight">
+            Recent chores
+          </h2>
+          {chores.length === 0 ? (
+            <p className="mt-2 text-muted">Nothing logged yet. Did the dishes today? Log it above.</p>
+          ) : (
+            <ul className="mt-2 divide-y divide-border">
+              {chores.map((chore) => (
+                <li key={chore.id} data-testid="core-item" className="flex items-start justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="break-words font-medium">{chore.title}</p>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+                      <span>{nameOf(chore.done_by)}</span>
+                      {chore.user_id !== chore.done_by && (
+                        <span className="rounded bg-accent-soft px-1.5 text-xs font-medium text-accent-ink">
+                          Kudos from {nameOf(chore.user_id).replace(/^You$/, "you")}
+                        </span>
+                      )}
+                      <span>{timeAgo(chore.created_at)}</span>
+                    </p>
+                  </div>
+                  <span className="shrink-0 font-semibold text-accent-ink tabular-nums">+{chore.points}</span>
+                </li>
+              ))}
+            </ul>
           )}
-        </div>
-        <ForfeitForm flatId={flat.id} current={flat.forfeit} />
-        {!showInvitePrompt && <JoinForm alone={alone} />}
-      </Card>
+        </section>
+
+        <section className="space-y-6 border-t border-border pt-8">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">{alone ? "Invite your flatmates" : "Your flat"}</h2>
+            <p className="mt-1 text-sm text-muted">
+              Send them the link, or have them type the code on their board after signing up.
+            </p>
+            <p
+              className="mt-3 text-3xl font-semibold tracking-[0.25em] tabular-nums"
+              aria-label={`Flat code ${flat.join_code.split("").join(" ")}`}
+            >
+              {flat.join_code}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <CopyButton text={inviteLink} label="Copy invite link" />
+              <a
+                href={`https://wa.me/?text=${whatsappText}`}
+                target="_blank"
+                rel="noreferrer"
+                className={buttonLooks.secondary}
+              >
+                Share on WhatsApp
+              </a>
+            </div>
+            {!alone && (
+              <p className="mt-3 text-sm text-muted">
+                In this flat: {members.map((member) => nameOf(member.user_id)).join(", ")}
+              </p>
+            )}
+          </div>
+          <ForfeitForm flatId={flat.id} current={flat.forfeit} />
+          {!showInvitePrompt && <JoinForm alone={alone} />}
+        </section>
+      </div>
     </main>
   );
 }

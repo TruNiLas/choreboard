@@ -23,7 +23,7 @@ export function currentMonth(now = new Date()) {
   const startIso = `${year}-${String(month).padStart(2, "0")}-01T00:00:00${offset}`;
   const name = new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, month: "long" }).format(now);
 
-  return { startIso, name, daysLeft: daysInMonth - day };
+  return { startIso, name, lastDay: daysInMonth, daysLeft: daysInMonth - day };
 }
 
 export function timeAgo(iso: string, now = new Date()) {

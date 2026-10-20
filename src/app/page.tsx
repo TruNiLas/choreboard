@@ -1,77 +1,73 @@
 import Link from "next/link";
+import { LeaderboardSlab } from "@/components/leaderboard-slab";
+import { buttonLooks } from "@/components/ui";
+import { currentMonth } from "@/lib/month";
 import { createClient, getUserId } from "@/lib/supabase/server";
 
+// A made-up flat. The only place where the last flatmate gets named as a joke.
 const SAMPLE_BOARD = [
-  { name: "Lea", points: 14 },
-  { name: "You", points: 11 },
-  { name: "Marco", points: 9 },
-  { name: "Sam", points: 4, watch: true },
+  { key: "lea", name: "Lea", points: 14 },
+  { key: "you", name: "You", points: 11 },
+  { key: "marco", name: "Marco", points: 9 },
+  { key: "sam", name: "Sam", points: 4, watch: true },
 ];
 
 const STEPS = [
-  { title: "Log what you did", text: "Dishes, bins, bathroom. One tap, and the points land on the board." },
-  { title: "Thank who covered for you", text: "Forgot your dishes and Lea did them? Give her the credit." },
-  { title: "Settle it at month end", text: "The lowest score does the forfeit you agreed on, like paying for dinner." },
+  { title: "Log what you did", text: "Dishes, bins, bathroom. One tap and it’s on the board." },
+  { title: "Give kudos", text: "Lea did your dishes? She gets the points, you get to say thanks." },
+  { title: "Settle it on the last day", text: "The lowest score does the forfeit you all agreed on." },
 ];
 
 export default async function LandingPage() {
   const supabase = await createClient();
   const signedIn = Boolean(await getUserId(supabase));
+  const month = currentMonth();
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-16">
-      <section className="grid items-center gap-10 sm:grid-cols-2">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wider text-muted">For students sharing a flat</p>
-          <h1 className="mt-3 text-4xl font-bold leading-tight sm:text-5xl">Get credit for every chore in your flat.</h1>
-          <p className="mt-4 text-lg text-muted">
-            Log what you do, thank flatmates who cover for you, and the lowest score at the end of the month cooks
-            dinner. No awkward talks.
+    <main className="mx-auto w-full max-w-5xl pb-16 sm:px-4">
+      <div className="grid items-center gap-8 sm:py-12 lg:grid-cols-[1fr_26rem] lg:gap-16 lg:py-20">
+        <section className="px-4 pt-8 sm:px-0 sm:pt-0">
+          <h1 className="text-[2.625rem] font-semibold leading-[1.02] tracking-[-0.03em] sm:text-[3.5rem]">
+            Credit for every chore in your flat.
+          </h1>
+          <p className="mt-4 max-w-md text-lg text-muted">
+            For students sharing a flat. Log what you do, give kudos when a flatmate covers for you, and the
+            month&rsquo;s lowest score does the forfeit.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-4">
-            <Link
-              href={signedIn ? "/app" : "/signup"}
-              className="inline-flex min-h-12 items-center rounded-lg bg-accent px-6 text-lg font-semibold text-accent-foreground hover:brightness-95"
-            >
+          <div className="mt-6 flex flex-col items-start gap-3">
+            <Link href={signedIn ? "/app" : "/signup"} className={`${buttonLooks.primary} text-lg`}>
               {signedIn ? "Open your board" : "Sign up free"}
             </Link>
             {!signedIn && (
-              <span className="text-sm text-muted">
-                Takes 30 seconds.{" "}
-                <Link href="/login" className="underline underline-offset-4">
+              <p className="text-muted">
+                Already have an account?{" "}
+                <Link href="/login" className="text-foreground underline underline-offset-4">
                   Log in
                 </Link>
-              </span>
+              </p>
             )}
           </div>
-        </div>
+        </section>
 
-        <figure className="rounded-2xl bg-board p-5 text-board-foreground shadow-lg" aria-label="Example flat leaderboard">
-          <p className="font-mono text-sm uppercase tracking-widest text-board-highlight">Flat 3B · October</p>
-          <ol className="mt-3 divide-y divide-white/10 font-mono">
-            {SAMPLE_BOARD.map((row, index) => (
-              <li key={row.name} className="flex items-center justify-between py-2">
-                <span className="flex items-center gap-3">
-                  <span className="w-4 text-right opacity-60">{index + 1}</span>
-                  {row.name}
-                </span>
-                <span className="flex items-center gap-2">
-                  {row.watch && <span className="rounded bg-board-highlight px-1.5 text-xs text-board">cooks dinner</span>}
-                  <span className="text-lg text-board-highlight">{row.points}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-          <figcaption className="mt-3 text-sm opacity-80">Lea did your dishes · thanked by you · +1</figcaption>
-        </figure>
-      </section>
+        <LeaderboardSlab
+          className="sm:rounded-2xl"
+          title={<p className="text-lg font-medium">Flat 3B</p>}
+          subtitle={`${month.name}, ${month.daysLeft === 0 ? "last day" : `${month.daysLeft} days left`}`}
+          rows={SAMPLE_BOARD}
+          stub={
+            <p>
+              On {month.lastDay} {month.name}, <span className="font-semibold">Sam pays for dinner.</span> Unless Sam
+              finds the bathroom first.
+            </p>
+          }
+        />
+      </div>
 
-      <section className="mt-16 grid gap-4 sm:grid-cols-3" aria-label="How it works">
-        {STEPS.map((step, index) => (
-          <div key={step.title} className="rounded-2xl border border-border bg-surface p-5">
-            <p className="font-mono text-sm text-muted">0{index + 1}</p>
-            <h2 className="mt-2 font-semibold">{step.title}</h2>
-            <p className="mt-1 text-sm text-muted">{step.text}</p>
+      <section aria-label="How it works" className="mt-10 grid gap-6 px-4 sm:mt-4 sm:grid-cols-3 sm:px-0">
+        {STEPS.map((step) => (
+          <div key={step.title}>
+            <h2 className="text-lg font-semibold">{step.title}</h2>
+            <p className="mt-1 text-muted">{step.text}</p>
           </div>
         ))}
       </section>

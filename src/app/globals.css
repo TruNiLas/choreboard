@@ -1,34 +1,44 @@
 @import "tailwindcss";
 
 /* Semantic colour tokens. Components use these (bg-surface, text-muted, ...) rather than
-   palette colours, so dark mode only has to be defined once, here. */
+   palette colours, so dark mode only has to be defined once, here. See DESIGN.md. */
 :root {
-  --background: #f6f4ee;
-  --surface: #ffffff;
-  --foreground: #1c1b18;
-  --muted: #6b675d;
-  --border: #e3dfd3;
-  --accent: #f2b705;
-  --accent-foreground: #1c1b18;
-  --board: #1f2a24;
-  --board-foreground: #f4f1e6;
-  --board-highlight: #f2b705;
+  --background: #ffffff;
+  --surface: #f4f3f6;
+  --foreground: #0f0d12;
+  --muted: #6b6772;
+  --border: #e6e4ea;
+  --accent: #6a22c9;
+  --accent-foreground: #ffffff;
+  --accent-soft: #efe6fb;
+  --accent-ink: #6a22c9;
+  --board: #6a22c9;
+  --board-foreground: #ffffff;
+  --board-muted: rgb(255 255 255 / 0.72);
+  --board-line: rgb(255 255 255 / 0.16);
+  --stub: #ffd9c7;
+  --stub-foreground: #3a1d10;
   --danger: #b42318;
   --success: #1f7a4d;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #121311;
-    --surface: #1b1d1a;
-    --foreground: #eeebe2;
-    --muted: #a39f94;
-    --border: #2e312c;
-    --accent: #f2b705;
-    --accent-foreground: #1c1b18;
-    --board: #0c1210;
-    --board-foreground: #f4f1e6;
-    --board-highlight: #f2b705;
+    --background: #121014;
+    --surface: #1c1a20;
+    --foreground: #f4f2f7;
+    --muted: #a5a0ad;
+    --border: #2c2931;
+    --accent: #a774f0;
+    --accent-foreground: #160f20;
+    --accent-soft: #2b2139;
+    --accent-ink: #c4a3f6;
+    --board: #3b1676;
+    --board-foreground: #ffffff;
+    --board-muted: rgb(255 255 255 / 0.66);
+    --board-line: rgb(255 255 255 / 0.14);
+    --stub: #f2c3ad;
+    --stub-foreground: #2b140a;
     --danger: #f97066;
     --success: #4ade80;
   }
@@ -42,16 +52,38 @@
   --color-border: var(--border);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
   --color-board: var(--board);
   --color-board-foreground: var(--board-foreground);
-  --color-board-highlight: var(--board-highlight);
+  --color-board-muted: var(--board-muted);
+  --color-board-line: var(--board-line);
+  --color-stub: var(--stub);
+  --color-stub-foreground: var(--stub-foreground);
   --color-danger: var(--danger);
   --color-success: var(--success);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-familjen);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The forfeit ticket's scalloped top edge: half-circles of the board colour bitten out
+   of the stub, so it reads as torn off the leaderboard above it. */
+@utility stub-edge {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 5px;
+    background: radial-gradient(circle at 7px 0, var(--board) 4px, transparent 4.5px) 0 0 / 14px 5px repeat-x;
+  }
 }

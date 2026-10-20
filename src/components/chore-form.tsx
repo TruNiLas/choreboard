@@ -37,7 +37,7 @@ function ChoreFields({
   const flatmates = members.filter((member) => member.userId !== me);
 
   return (
-    <form action={formAction} className="space-y-3">
+    <form action={formAction} className="space-y-4">
       <div className="space-y-1">
         <label htmlFor="chore-title" className="block text-sm font-medium">
           What got done?
@@ -57,7 +57,7 @@ function ChoreFields({
         />
       </div>
 
-      <div id="chore-presets" className="flex flex-wrap gap-2" aria-label="Quick picks">
+      <div id="chore-presets" className="-mt-1 flex flex-wrap gap-2" aria-label="Quick picks">
         {CHORE_PRESETS.map((preset) => (
           <button
             key={preset.title}
@@ -68,9 +68,9 @@ function ChoreFields({
                 titleRef.current.focus();
               }
             }}
-            className="min-h-9 rounded-full border border-border px-3 text-sm hover:border-foreground"
+            className="min-h-11 rounded-full border border-border px-3 text-sm hover:border-accent"
           >
-            {preset.title} <span className="font-mono text-muted">+{preset.points}</span>
+            {preset.title} <span className="text-muted tabular-nums">+{preset.points}</span>
           </button>
         ))}
       </div>
@@ -90,7 +90,7 @@ function ChoreFields({
             ))}
           </select>
         </div>
-        <Button type="submit" disabled={pending} data-testid="core-submit" className="sm:w-40">
+        <Button type="submit" disabled={pending} data-testid="core-submit" className="w-full sm:w-40">
           {pending ? "Logging…" : "Log it"}
         </Button>
       </div>

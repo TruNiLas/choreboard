@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Log in · Choreboard" };
 export default async function LogInPage({ searchParams }: PageProps<"/login">) {
   const { join } = await searchParams;
   return (
-    <main className="flex flex-1 px-4 py-10">
+    <main className="flex flex-1 px-4 py-12 sm:py-20">
       <AuthForm mode="login" join={cleanJoinCode(join)} />
     </main>
   );

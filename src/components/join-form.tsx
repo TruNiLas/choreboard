@@ -25,7 +25,7 @@ export function JoinForm({ defaultCode, alone }: { defaultCode?: string; alone: 
           placeholder="K7M2QX"
           defaultValue={defaultCode}
           aria-describedby="join-hint"
-          className={`${inputClass} font-mono uppercase tracking-widest`}
+          className={`${inputClass} uppercase tracking-[0.2em] tabular-nums`}
         />
         <Button type="submit" variant="secondary" disabled={pending} className="shrink-0">
           {pending ? "Joining…" : "Join"}

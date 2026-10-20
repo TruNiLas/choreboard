@@ -3,21 +3,20 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 // Generic building blocks. No Choreboard knowledge in here.
 
 export const inputClass =
-  "block min-h-11 w-full rounded-lg border border-border bg-surface px-3 text-base text-foreground placeholder:text-muted focus:border-foreground focus:outline-none";
+  "block min-h-12 w-full rounded-md border border-transparent bg-surface px-3 text-base text-foreground placeholder:text-muted focus:border-accent focus:outline-none";
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" };
+const buttonBase =
+  "inline-flex min-h-12 items-center justify-center rounded-md px-5 font-medium transition-colors disabled:opacity-60";
+
+export const buttonLooks = {
+  primary: `${buttonBase} bg-accent text-accent-foreground hover:brightness-110`,
+  secondary: `${buttonBase} bg-surface text-foreground hover:bg-border`,
+} as const;
+
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: keyof typeof buttonLooks };
 
 export function Button({ variant = "primary", className = "", ...props }: ButtonProps) {
-  const look =
-    variant === "primary"
-      ? "bg-accent text-accent-foreground hover:brightness-95"
-      : "border border-border bg-surface text-foreground hover:bg-background";
-  return (
-    <button
-      {...props}
-      className={`inline-flex min-h-11 items-center justify-center rounded-lg px-4 font-semibold transition disabled:opacity-60 ${look} ${className}`}
-    />
-  );
+  return <button {...props} className={`${buttonLooks[variant]} ${className}`} />;
 }
 
 export function ErrorMessage({ children }: { children: ReactNode }) {
@@ -28,6 +27,6 @@ export function ErrorMessage({ children }: { children: ReactNode }) {
   );
 }
 
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-2xl border border-border bg-surface p-4 sm:p-5 ${className}`}>{children}</section>;
+export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <section className={`rounded-xl bg-surface p-4 sm:p-5 ${className}`}>{children}</section>;
 }
