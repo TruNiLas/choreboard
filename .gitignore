@@ -12,3 +12,6 @@ out/
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+
+# private notes, not part of the app
+research/

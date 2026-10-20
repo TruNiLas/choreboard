@@ -24,11 +24,34 @@ An automated bot grades this app on its public Vercel URL, acting like a strange
 - Only the Supabase URL and the publishable (anon) key may reach the browser. Never put the secret/service_role key or any AI API key in the frontend or in GitHub.
 - Keep keys in `.env.local` (listed in `.gitignore`) and in Vercel environment variables.
 
-## Project
+## Project: Choreboard
 
-- One-liner: TODO after Step 1 interviews
-- Main feature: TODO (one action that saves a short text)
-- Data: private, each user only sees their own items
+- One-liner (draft): Choreboard helps students in shared flats get credit for every chore,
+  so the work stays fair and the month's laziest flatmate cooks dinner.
+- Who: university students sharing a flat (first users: IE students in Madrid).
+- Problem (from interviews): small chores get skipped, nobody brings them up, rules agreed
+  at move-in fade without consequences, and it builds up into fights.
+- Tone: positive. Credit for what got done, never blame for what did not.
+- Main feature: log a chore that got done (`core-input` = what got done, e.g. "Did the
+  dishes"). "Who did it" defaults to me; picking a flatmate credits them ("thanked by").
+- Data: shared only within a flat. A new user gets their own flat at sign-up, so a
+  stranger sees nothing. In Socratista: "Data shared between users: no".
+
+### v1 scope
+
+1. A flat is created automatically at sign-up (no onboarding before `/app`). Flatmates
+   join with an invite link (`/join/<code>`) or by typing the 6-character code on `/app`.
+2. Log a chore: text, who did it (default me). Points come from the preset list below,
+   matched on the title; anything else is 1 point. Points are set in the database, never
+   trusted from the browser.
+3. This month's leaderboard plus the flat's forfeit (picked from presets or typed). The
+   lowest score at month end does the forfeit.
+
+Presets live in `supabase/schema.sql` (`chore_points`) and `src/lib/presets.ts`; keep
+both in sync.
+
+v2, not now: doubting a self-report, reminders by email, nudges, assigned chores,
+leaving a flat, editing display names.
 
 ## Stack
 
@@ -49,10 +72,13 @@ before writing code. APIs and file conventions may have changed.
   who opens `/login` or `/signup` goes to `/app`.
 - The `logout` button lives in a shared header, so it is on every page while logged in,
   including `/`.
-- The schema lives in `supabase/schema.sql`. Every table has
-  `user_id uuid not null default auth.uid() references auth.users on delete cascade`,
-  RLS enabled, and policies `to authenticated` with `auth.uid() = user_id` for select,
-  insert, update and delete. No policies for `anon`.
+- The schema lives in `supabase/schema.sql`. Every table has RLS enabled and policies
+  `to authenticated` only, all based on `auth.uid()`: either the row's own `user_id`, or
+  membership of the same flat through `public.my_flat_id()`. No policies and no grants
+  for `anon`. "Automatically expose new tables" is off, so every table needs explicit
+  grants to `authenticated`.
+- Joining a flat and creating one at sign-up go through `security definer` functions,
+  never through direct writes to `flats` or `flat_members` from the browser.
 - All reads and writes go through the logged-in user's session. Never a service key.
 - Every account is treated the same. No special cases for test or bot accounts.
 - Mobile first: no horizontal scroll at 375px wide, tap targets at least 44px.
