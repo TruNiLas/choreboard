@@ -36,11 +36,14 @@ export function AuthForm({ mode, join }: { mode: Mode; join: string | null }) {
   const [showPassword, setShowPassword] = useState(false);
   const copy = COPY[mode];
   const switchHref = join ? `${copy.switchHref}?join=${join}` : copy.switchHref;
+  // With an invite, the invite note below says what happens; the usual intro ("you get your
+  // own flat") would contradict it.
+  const intro = join && mode === "signup" ? null : copy.intro;
 
   return (
     <div className="mx-auto w-full max-w-sm">
       <h1 className="text-3xl font-semibold tracking-[-0.03em]">{copy.title}</h1>
-      <p className="mt-1 text-muted">{copy.intro}</p>
+      {intro && <p className="mt-1 text-muted">{intro}</p>}
       {join && (
         <p className="mt-4 rounded-xl bg-accent-soft px-4 py-3 text-sm">
           You were invited to a flat (code <span className="font-semibold tracking-widest">{join}</span>). You can

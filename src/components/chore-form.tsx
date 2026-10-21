@@ -1,12 +1,14 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useActionState, useRef, useState } from "react";
 import { logChore } from "@/app/app/actions";
 import { Button, ErrorMessage, inputClass } from "@/components/ui";
 import { initialFormState } from "@/lib/form-state";
 import { CHORE_PRESETS } from "@/lib/presets";
 
 type Member = { userId: string; name: string };
+
+const TITLE_MAX = 80;
 
 export function ChoreForm({ members, me }: { members: Member[]; me: string }) {
   const [state, formAction, pending] = useActionState(logChore, initialFormState);
@@ -34,21 +36,31 @@ function ChoreFields({
   children: React.ReactNode;
 }) {
   const titleRef = useRef<HTMLInputElement>(null);
+  const [titleLength, setTitleLength] = useState(0);
   const flatmates = members.filter((member) => member.userId !== me);
 
   return (
     <form action={formAction} className="space-y-4">
       <div className="space-y-1">
-        <label htmlFor="chore-title" className="block text-sm font-medium">
-          What got done?
-        </label>
+        <div className="flex items-baseline justify-between gap-3">
+          <label htmlFor="chore-title" className="block text-sm font-medium">
+            What got done?
+          </label>
+          {/* Only near the limit, so a long title doesn't stop mid-word without warning. */}
+          {titleLength >= TITLE_MAX - 20 && (
+            <span className="text-xs text-muted tabular-nums" aria-live="polite">
+              {titleLength}/{TITLE_MAX}
+            </span>
+          )}
+        </div>
         <input
           ref={titleRef}
           id="chore-title"
           name="title"
           type="text"
           required
-          maxLength={80}
+          maxLength={TITLE_MAX}
+          onInput={(event) => setTitleLength(event.currentTarget.value.length)}
           autoComplete="off"
           placeholder="e.g. Did the dishes"
           aria-describedby="chore-presets"
@@ -65,6 +77,7 @@ function ChoreFields({
             onClick={() => {
               if (titleRef.current) {
                 titleRef.current.value = preset.title;
+                setTitleLength(preset.title.length);
                 titleRef.current.focus();
               }
             }}

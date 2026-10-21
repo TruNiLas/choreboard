@@ -52,7 +52,8 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
     );
   }
 
-  const members: Member[] = membersResult.data ?? [];
+  // Sorted by name so "Who did it?" and ties keep the same order on every load.
+  const members: Member[] = (membersResult.data ?? []).sort((a, b) => a.display_name.localeCompare(b.display_name));
   const chores: Chore[] = recentResult.data ?? [];
   const names = new Map(members.map((member) => [member.user_id, member.display_name]));
   const nameOf = (userId: string) => (userId === me ? "You" : (names.get(userId) ?? "A former flatmate"));
@@ -64,7 +65,11 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
   const leaderboard = [...scores.entries()]
     .map(([userId, points]) => ({ userId, points }))
     .sort((a, b) => b.points - a.points);
-  const lowest = leaderboard.length > 1 ? leaderboard[leaderboard.length - 1] : null;
+  // Only a clear last place is on forfeit watch: nobody gets tagged at a tie, including a
+  // newcomer at 0 points.
+  const last = leaderboard[leaderboard.length - 1];
+  const secondLast = leaderboard[leaderboard.length - 2];
+  const lowest = last && secondLast && last.points < secondLast.points ? last : null;
 
   const host = (await headers()).get("host") ?? "";
   const protocol = host.startsWith("localhost") ? "http" : "https";
@@ -80,7 +85,7 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
           <h2 className="text-lg font-semibold">You were invited to a flat</h2>
           <p className="mt-1 text-sm text-muted">Join it to share one board with your flatmates.</p>
           <div className="mt-3">
-            <JoinForm defaultCode={inviteCode} alone={alone} />
+            <JoinForm defaultCode={inviteCode} alone={alone} currentCode={flat.join_code} />
           </div>
         </section>
       )}
@@ -154,6 +159,7 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
             >
               {flat.join_code}
             </p>
+            <p className="mt-1 break-all text-sm text-muted">{inviteLink}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <CopyButton text={inviteLink} label="Copy invite link" />
               <a
@@ -171,8 +177,10 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
               </p>
             )}
           </div>
-          <ForfeitForm flatId={flat.id} current={flat.forfeit} />
-          {!showInvitePrompt && <JoinForm alone={alone} />}
+          {/* Keyed so the field shows the new value after joining another flat or after a
+              flatmate changes it, instead of keeping a stale one that Save would write back. */}
+          <ForfeitForm key={`${flat.id}:${flat.forfeit}`} flatId={flat.id} current={flat.forfeit} />
+          {!showInvitePrompt && <JoinForm alone={alone} currentCode={flat.join_code} />}
         </section>
       </div>
     </main>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui";
 
 export function CopyButton({ text, label }: { text: string; label: string }) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
 
   return (
     <Button
@@ -13,14 +13,17 @@ export function CopyButton({ text, label }: { text: string; label: string }) {
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
+          setStatus("copied");
         } catch {
           // Clipboard blocked (old browser or no permission): the text is on screen to copy by hand.
+          setStatus("failed");
         }
+        setTimeout(() => setStatus("idle"), 3000);
       }}
     >
-      <span aria-live="polite">{copied ? "Copied" : label}</span>
+      <span aria-live="polite">
+        {status === "copied" ? "Copied" : status === "failed" ? "Couldn't copy. Copy the link above." : label}
+      </span>
     </Button>
   );
 }

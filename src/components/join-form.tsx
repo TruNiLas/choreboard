@@ -1,12 +1,25 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { joinFlat } from "@/app/app/actions";
 import { Button, ErrorMessage, inputClass } from "@/components/ui";
 import { initialFormState } from "@/lib/form-state";
 
-export function JoinForm({ defaultCode, alone }: { defaultCode?: string; alone: boolean }) {
+export function JoinForm({
+  defaultCode,
+  alone,
+  currentCode,
+}: {
+  defaultCode?: string;
+  alone: boolean;
+  currentCode: string;
+}) {
   const [state, formAction, pending] = useActionState(joinFlat, initialFormState);
+  // Controlled, so a failed join keeps the code to fix a typo (React clears uncontrolled
+  // fields after every action). Spaces are dropped before cutting to 6 characters, so a
+  // pasted " k7m2qx " still fits; a maxLength would cut it first.
+  const [code, setCode] = useState(defaultCode ?? "");
+  const ownCode = code === currentCode;
 
   return (
     <form action={formAction} className="space-y-2">
@@ -19,22 +32,24 @@ export function JoinForm({ defaultCode, alone }: { defaultCode?: string; alone: 
           name="code"
           type="text"
           required
-          maxLength={6}
           autoComplete="off"
           autoCapitalize="characters"
           placeholder="K7M2QX"
-          defaultValue={defaultCode}
+          value={code}
+          onChange={(event) => setCode(event.target.value.replace(/\s/g, "").toUpperCase().slice(0, 6))}
           aria-describedby="join-hint"
           className={`${inputClass} uppercase tracking-[0.2em] tabular-nums`}
         />
-        <Button type="submit" variant="secondary" disabled={pending} className="shrink-0">
+        <Button type="submit" variant="secondary" disabled={pending || ownCode} className="shrink-0">
           {pending ? "Joining…" : "Join"}
         </Button>
       </div>
       <p id="join-hint" className="text-xs text-muted">
-        {alone
-          ? "Joining moves you into their flat."
-          : "Joining moves you into their flat. Your current flat keeps its history."}
+        {ownCode
+          ? "That's your flat's own code. Share it with your flatmates instead."
+          : alone
+            ? "Joining moves you into their flat."
+            : "Joining moves you into their flat. Your current flat keeps its history."}
       </p>
       {state.error && <ErrorMessage>{state.error}</ErrorMessage>}
     </form>

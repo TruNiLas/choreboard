@@ -13,7 +13,7 @@ const SAMPLE_BOARD = [
 ];
 
 const STEPS = [
-  { title: "Log what you did", text: "Dishes, bins, bathroom. One tap and it’s on the board." },
+  { title: "Log what you did", text: "Dishes, bins, bathroom. Pick it or type it, and it’s on the board." },
   { title: "Give kudos", text: "Lea did your dishes? She gets the points, you get to say thanks." },
   { title: "Settle it on the last day", text: "The lowest score does the forfeit you all agreed on." },
 ];
@@ -25,9 +25,9 @@ export default async function LandingPage() {
 
   return (
     <main className="mx-auto w-full max-w-5xl pb-16 sm:px-4">
-      <div className="grid items-center gap-8 sm:py-12 lg:grid-cols-[1fr_26rem] lg:gap-16 lg:py-20">
-        <section className="px-4 pt-8 sm:px-0 sm:pt-0">
-          <h1 className="text-[2.625rem] font-semibold leading-[1.02] tracking-[-0.03em] sm:text-[3.5rem]">
+      <div className="grid items-center gap-8 sm:py-12 md:grid-cols-[1fr_22rem] md:gap-10 lg:grid-cols-[1fr_26rem] lg:gap-16 lg:py-20">
+        <section className="px-4 pt-7 sm:px-0 sm:pt-0">
+          <h1 className="text-[2.625rem] font-semibold leading-[1.02] tracking-[-0.03em] sm:text-[3.5rem] md:text-[2.625rem] lg:text-[3.5rem]">
             Credit for every chore in your flat.
           </h1>
           <p className="mt-4 max-w-md text-lg text-muted">
@@ -51,7 +51,11 @@ export default async function LandingPage() {
 
         <LeaderboardSlab
           className="sm:rounded-2xl"
-          title={<p className="text-lg font-medium">Flat 3B</p>}
+          title={
+            <p className="flex items-baseline gap-2 text-lg font-medium">
+              Flat 3B <span className="rounded bg-board-line px-1.5 text-xs font-medium">Example</span>
+            </p>
+          }
           subtitle={`${month.name}, ${month.daysLeft === 0 ? "last day" : `${month.daysLeft} days left`}`}
           rows={SAMPLE_BOARD}
           stub={
