@@ -65,3 +65,18 @@ export async function setForfeit(prev: FormState, formData: FormData): Promise<F
   revalidatePath("/app");
   return { resetKey: (prev.resetKey ?? 0) + 1 };
 }
+
+// Removing your own entry (within 24 hours) and declining a kudos given to you. The
+// delete policy decides which of the two applies; anything else deletes nothing.
+export async function removeChore(prev: FormState, formData: FormData): Promise<FormState> {
+  const { supabase } = await signedInClient();
+
+  const id = String(formData.get("chore_id") ?? "");
+  const { data, error } = await supabase.from("chores").delete().eq("id", id).select("id");
+  if (error || !data?.length) {
+    return { ...prev, error: "Couldn't remove that. Your own entries can be removed for 24 hours." };
+  }
+
+  revalidatePath("/app");
+  return { resetKey: (prev.resetKey ?? 0) + 1 };
+}

@@ -43,16 +43,20 @@ An automated bot grades this app on its public Vercel URL, acting like a strange
 
 1. A flat is created automatically at sign-up (no onboarding before `/app`). Flatmates
    join with an invite link (`/join/<code>`) or by typing the 6-character code on `/app`.
-2. Log a chore: text, who did it (default me). Points come from the preset list below,
-   matched on the title; anything else is 1 point. Points are set in the database, never
-   trusted from the browser.
+2. Log a chore: text, who did it (default me). Points come from English and Spanish
+   keyword groups (bathroom 3, kitchen clean 3, floors/cooking/shopping 2); anything else
+   is 1 point. The same chore counts once per person per day (a repeat saves for 0).
+   Points are set in the database, never trusted from the browser; the form previews them.
+   The logger can remove an entry for 24 hours; a kudos can be declined by its recipient.
+   Forfeit changes are recorded and shown in the feed.
 3. This month's leaderboard plus the flat's forfeit (picked from presets or typed). The
    lowest score at month end does the forfeit.
 
-Presets live in `supabase/schema.sql` (`chore_points`) and `src/lib/presets.ts`; keep
-both in sync.
+Scoring lives in `supabase/schema.sql` (`chore_words`, `chore_category`, `chore_points`)
+and is mirrored in `src/lib/points.ts` for the preview; keep both in sync. Quick-pick
+titles live in `src/lib/presets.ts` and take their points from `points.ts`.
 
-v2, not now: doubting a self-report, reminders by email, nudges, assigned chores,
+v2, not now: doubting a self-report, custom points confirmed by flatmates, backdating, reminders by email, nudges, assigned chores,
 leaving a flat, editing display names.
 
 ## Stack

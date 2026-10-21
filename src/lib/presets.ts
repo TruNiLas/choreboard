@@ -1,16 +1,19 @@
-// Keep CHORE_PRESETS in sync with chore_points() in supabase/schema.sql. The database is
-// what actually awards points; this list only drives the quick-pick buttons.
+import { chorePoints } from "@/lib/points";
+
+// Quick-pick titles. Their points come from the same keyword rules as any typed title
+// (src/lib/points.ts, mirrored in supabase/schema.sql), so the chips can never disagree
+// with what the database awards.
 export const CHORE_PRESETS = [
-  { title: "Did the dishes", points: 1 },
-  { title: "Wiped the table", points: 1 },
-  { title: "Took out the bins", points: 1 },
-  { title: "Emptied the dishwasher", points: 1 },
-  { title: "Cooked for the flat", points: 2 },
-  { title: "Did a shopping run", points: 2 },
-  { title: "Vacuumed", points: 2 },
-  { title: "Cleaned the bathroom", points: 3 },
-  { title: "Cleaned the kitchen", points: 3 },
-] as const;
+  "Did the dishes",
+  "Wiped the table",
+  "Took out the bins",
+  "Emptied the dishwasher",
+  "Cooked for the flat",
+  "Did a shopping run",
+  "Vacuumed",
+  "Cleaned the bathroom",
+  "Cleaned the kitchen",
+].map((title) => ({ title, points: chorePoints(title) }));
 
 export const FORFEIT_PRESETS = [
   "Pay for a group dinner",

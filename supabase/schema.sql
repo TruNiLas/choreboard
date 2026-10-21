@@ -51,30 +51,80 @@ create table if not exists public.chores (
 
 create index if not exists chores_flat_created_idx on public.chores (flat_id, created_at desc);
 
--- Points --------------------------------------------------------------------------------
+-- Which keyword group the title matched (see chore_category), or null. Set by the trigger.
+alter table public.chores add column if not exists category text;
 
--- Keep in sync with src/lib/presets.ts. Anything not listed is worth 1 point.
+create index if not exists chores_done_by_created_idx on public.chores (done_by, created_at desc);
+
+-- Points --------------------------------------------------------------------------------
+-- Keep chore_words() and chore_category() in sync with src/lib/points.ts, which mirrors
+-- them for the points preview. The database is what actually awards points.
+
+-- The title as plain words: lowercase, accents stripped, anything else a single space,
+-- padded with a space on both sides so ' word' matches at the start of a word.
+create or replace function public.chore_words(title text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select ' ' || btrim(regexp_replace(
+    translate(lower(title), 'áàâäãåéèêëíìîïóòôöõúùûüñç', 'aaaaaaeeeeiiiiooooouuuunc'),
+    '[^a-z0-9]+', ' ', 'g'
+  )) || ' '
+$$;
+
+-- English and Spanish keywords, highest points first. '% word%' matches the start of a
+-- word ("vacuumed"), '% word %' only the whole word.
+create or replace function public.chore_category(title text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select case
+    when w like any (array['% bathroom%', '% toilet%', '% loo %', '% wc %', '% bano%', '% aseo%',
+                           '% inodoro%', '% vater%'])
+      then 'bathroom'
+    when w like any (array['% kitchen%', '% cocina %', '% hob%', '% oven%', '% stove%', '% fridge%',
+                           '% freezer%', '% nevera%', '% horno%', '% vitro%'])
+     and w like any (array['% clean%', '% scrub%', '% mop%', '% bleach%', '% disinfect%', '% degrease%',
+                           '% limpi%', '% freg%', '% frieg%', '% desinfect%'])
+      then 'kitchen'
+    when w like any (array['% vacuum%', '% hoover%', '% mop%', '% sweep%', '% swept%', '% floor%',
+                           '% aspira%', '% aspire%', '% barri %', '% barrer%', '% suelo%', '% fregona%'])
+      then 'floors'
+    when w like any (array['% cook %', '% cooked%', '% cooking%', '% cocine %', '% cocinar%', '% cocino %',
+                           '% cocinamos%', '% made dinner%', '% made lunch%', '% hice la cena%',
+                           '% hice la comida%', '% prepare la cena%', '% prepare la comida%'])
+      then 'cooking'
+    when w like any (array['% shop%', '% groceries%', '% grocery%', '% supermarket%', '% compra%',
+                           '% compre %', '% mercadona%', '% super %'])
+      then 'shopping'
+  end
+  from (select public.chore_words(title) as w) as t
+$$;
+
 create or replace function public.chore_points(title text)
 returns integer
 language sql
 immutable
 set search_path = ''
 as $$
-  select case lower(btrim(title))
-    when 'did the dishes' then 1
-    when 'wiped the table' then 1
-    when 'took out the bins' then 1
-    when 'emptied the dishwasher' then 1
-    when 'cooked for the flat' then 2
-    when 'did a shopping run' then 2
-    when 'vacuumed' then 2
-    when 'cleaned the bathroom' then 3
-    when 'cleaned the kitchen' then 3
+  select case public.chore_category(title)
+    when 'bathroom' then 3
+    when 'kitchen' then 3
+    when 'floors' then 2
+    when 'cooking' then 2
+    when 'shopping' then 2
     else 1
   end
 $$;
 
 -- Points are always set here, never trusted from the browser.
+-- Abuse brake: the same chore (same keyword group, or the same words if none matched)
+-- counts once per person per day, Madrid time. A repeat still saves, for 0 points. It
+-- applies to whoever gets the points, so trading kudos back and forth is capped too.
 create or replace function public.set_chore_points()
 returns trigger
 language plpgsql
@@ -82,7 +132,25 @@ set search_path = ''
 as $$
 begin
   new.title := btrim(new.title);
-  new.points := public.chore_points(new.title);
+  new.category := public.chore_category(new.title);
+
+  if exists (
+    select 1 from public.chores c
+    where c.done_by = new.done_by
+      and c.flat_id = new.flat_id
+      and c.points > 0
+      and c.created_at >= date_trunc('day', now() at time zone 'Europe/Madrid') at time zone 'Europe/Madrid'
+      and case
+        when new.category is null
+          then c.category is null and public.chore_words(c.title) = public.chore_words(new.title)
+        else c.category = new.category
+      end
+  ) then
+    new.points := 0;
+  else
+    new.points := public.chore_points(new.title);
+  end if;
+
   return new;
 end
 $$;
@@ -172,11 +240,47 @@ begin
 end
 $$;
 
+-- Forfeit changes: every change is recorded with who made it, so it shows in the feed ----
+
+create table if not exists public.forfeit_changes (
+  id uuid primary key default gen_random_uuid(),
+  flat_id uuid not null references public.flats on delete cascade,
+  changed_by uuid references auth.users on delete set null,
+  forfeit text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists forfeit_changes_flat_created_idx
+  on public.forfeit_changes (flat_id, created_at desc);
+
+-- security definer because members have no insert grant on forfeit_changes: the only way
+-- in is changing the forfeit itself.
+create or replace function public.log_forfeit_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.forfeit_changes (flat_id, changed_by, forfeit)
+  values (new.id, (select auth.uid()), new.forfeit);
+  return new;
+end
+$$;
+
+drop trigger if exists flats_log_forfeit_change on public.flats;
+create trigger flats_log_forfeit_change
+  after update of forfeit on public.flats
+  for each row
+  when (old.forfeit is distinct from new.forfeit)
+  execute function public.log_forfeit_change();
+
 -- Row Level Security ----------------------------------------------------------------------
 
 alter table public.flats enable row level security;
 alter table public.flat_members enable row level security;
 alter table public.chores enable row level security;
+alter table public.forfeit_changes enable row level security;
 
 drop policy if exists "Members read their flat" on public.flats;
 create policy "Members read their flat" on public.flats
@@ -211,28 +315,57 @@ create policy "Members log chores for their flat" on public.chores
     )
   );
 
+-- Whoever logged an entry can remove it for 24 hours (typos, double logs). Whoever got a
+-- kudos can decline it at any time: that only ever lowers their own score.
+drop policy if exists "Members remove their own entries or decline a kudos" on public.chores;
+create policy "Members remove their own entries or decline a kudos" on public.chores
+  for delete to authenticated
+  using (
+    flat_id = (select public.my_flat_id())
+    and (
+      (user_id = (select auth.uid()) and created_at > now() - interval '24 hours')
+      or (done_by = (select auth.uid()) and user_id <> done_by)
+    )
+  );
+
+drop policy if exists "Members read their flat's forfeit changes" on public.forfeit_changes;
+create policy "Members read their flat's forfeit changes" on public.forfeit_changes
+  for select to authenticated
+  using (flat_id = (select public.my_flat_id()));
+
 -- Grants ----------------------------------------------------------------------------------
 -- "Automatically expose new tables" is off, so access is granted explicitly, column by
 -- column where it matters: members can rename the flat and change the forfeit, but never
--- its join code, and can only choose a chore's title and who did it.
+-- its join code, and can only choose a chore's title and who did it. Forfeit changes are
+-- read-only; the trigger writes them.
 
-revoke all on public.flats, public.flat_members, public.chores from anon, authenticated;
+revoke all on public.flats, public.flat_members, public.chores, public.forfeit_changes
+  from anon, authenticated;
 
-grant select on public.flats, public.flat_members, public.chores to authenticated;
+grant select on public.flats, public.flat_members, public.chores, public.forfeit_changes
+  to authenticated;
 grant update (name, forfeit) on public.flats to authenticated;
 grant insert (title, done_by) on public.chores to authenticated;
+grant delete on public.chores to authenticated;
 
 revoke execute on function
   public.my_flat_id(),
+  public.chore_words(text),
+  public.chore_category(text),
   public.chore_points(text),
   public.set_chore_points(),
+  public.log_forfeit_change(),
   public.generate_join_code(),
   public.handle_new_user(),
   public.join_flat(text)
 from public, anon;
 
+-- The points trigger runs as the member logging the chore, so it needs the scoring
+-- functions too.
 grant execute on function
   public.my_flat_id(),
+  public.chore_words(text),
+  public.chore_category(text),
   public.chore_points(text),
   public.join_flat(text)
 to authenticated;

@@ -38,3 +38,13 @@ export function timeAgo(iso: string, now = new Date()) {
     new Date(iso),
   );
 }
+
+// "2026-10-21" in Madrid time: the day the once-a-day points brake counts in.
+export function madridDay(date: Date | string = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(new Date(date));
+}
+
+// Matches the 24-hour window in the chores delete policy.
+export function isWithinHours(iso: string, hours: number, now = new Date()) {
+  return now.getTime() - new Date(iso).getTime() < hours * 3_600_000;
+}

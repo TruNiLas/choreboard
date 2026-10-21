@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { ChoreActions } from "@/components/chore-actions";
 import { ChoreForm } from "@/components/chore-form";
 import { CopyButton } from "@/components/copy-button";
 import { ForfeitForm } from "@/components/forfeit-form";
@@ -8,7 +9,8 @@ import { JoinForm } from "@/components/join-form";
 import { LeaderboardSlab } from "@/components/leaderboard-slab";
 import { buttonLooks, Panel } from "@/components/ui";
 import { cleanJoinCode } from "@/lib/form-state";
-import { currentMonth, timeAgo } from "@/lib/month";
+import { currentMonth, isWithinHours, madridDay, timeAgo } from "@/lib/month";
+import { repeatKey } from "@/lib/points";
 import { createClient, getUserId } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Your board · Choreboard" };
@@ -18,6 +20,7 @@ export const dynamic = "force-dynamic";
 
 type Member = { user_id: string; display_name: string };
 type Chore = { id: string; title: string; points: number; done_by: string; user_id: string; created_at: string };
+type ForfeitChange = { id: string; changed_by: string | null; forfeit: string; created_at: string };
 
 export default async function BoardPage({ searchParams }: PageProps<"/app">) {
   const supabase = await createClient();
@@ -28,8 +31,8 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
   const { join } = await searchParams;
   const inviteCode = cleanJoinCode(join);
 
-  // RLS scopes all three reads to the caller's own flat.
-  const [flatResult, membersResult, recentResult, monthResult] = await Promise.all([
+  // RLS scopes every read to the caller's own flat.
+  const [flatResult, membersResult, recentResult, monthResult, forfeitResult] = await Promise.all([
     supabase.from("flats").select("id, name, join_code, forfeit").single(),
     supabase.from("flat_members").select("user_id, display_name").order("joined_at"),
     supabase
@@ -37,7 +40,15 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
       .select("id, title, points, done_by, user_id, created_at")
       .order("created_at", { ascending: false })
       .limit(50),
-    supabase.from("chores").select("done_by, points").gte("created_at", month.startIso),
+    supabase
+      .from("chores")
+      .select("done_by, points, title, category, created_at")
+      .gte("created_at", month.startIso),
+    supabase
+      .from("forfeit_changes")
+      .select("id, changed_by, forfeit, created_at")
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
 
   const flat = flatResult.data;
@@ -56,7 +67,8 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
   const members: Member[] = (membersResult.data ?? []).sort((a, b) => a.display_name.localeCompare(b.display_name));
   const chores: Chore[] = recentResult.data ?? [];
   const names = new Map(members.map((member) => [member.user_id, member.display_name]));
-  const nameOf = (userId: string) => (userId === me ? "You" : (names.get(userId) ?? "A former flatmate"));
+  const nameOf = (userId: string | null) =>
+    userId === me ? "You" : ((userId && names.get(userId)) ?? "A former flatmate");
 
   const scores = new Map(members.map((member) => [member.user_id, 0]));
   for (const chore of monthResult.data ?? []) {
@@ -70,6 +82,28 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
   const last = leaderboard[leaderboard.length - 1];
   const secondLast = leaderboard[leaderboard.length - 2];
   const lowest = last && secondLast && last.points < secondLast.points ? last : null;
+
+  // What already earned points today, per flatmate, so the form can warn before a repeat
+  // that the once-a-day brake will log for 0.
+  const today = madridDay();
+  const countedToday: Record<string, string[]> = {};
+  for (const chore of monthResult.data ?? []) {
+    if (chore.points > 0 && madridDay(chore.created_at) === today) {
+      (countedToday[chore.done_by] ??= []).push(repeatKey(chore.title, chore.category));
+    }
+  }
+
+  // Forfeit changes sit in the feed between the chores. Older than the oldest chore shown
+  // would put them out of context, so those are left out.
+  const forfeitChanges: ForfeitChange[] = forfeitResult.data ?? [];
+  const lastForfeitChange = forfeitChanges[0];
+  const feedStart = chores.length === 50 ? chores[chores.length - 1].created_at : "";
+  const feed = [
+    ...chores.map((chore) => ({ kind: "chore" as const, at: chore.created_at, chore })),
+    ...forfeitChanges
+      .filter((change) => change.created_at >= feedStart)
+      .map((change) => ({ kind: "forfeit" as const, at: change.created_at, change })),
+  ].sort((a, b) => b.at.localeCompare(a.at));
 
   const host = (await headers()).get("host") ?? "";
   const protocol = host.startsWith("localhost") ? "http" : "https";
@@ -105,6 +139,12 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
           <>
             <p className="text-sm">Lowest score on {month.lastDay} {month.name}:</p>
             <p className="break-words text-lg font-semibold">{flat.forfeit}</p>
+            {lastForfeitChange && (
+              <p className="mt-1 text-sm">
+                Set by {nameOf(lastForfeitChange.changed_by).replace(/^You$/, "you")},{" "}
+                {timeAgo(lastForfeitChange.created_at)}
+              </p>
+            )}
           </>
         }
       />
@@ -115,7 +155,11 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
             Log a chore
           </h2>
           <p className="mb-4 mt-1 text-muted">Credit for what you did, or kudos for a flatmate who covered for you.</p>
-          <ChoreForm members={members.map((m) => ({ userId: m.user_id, name: m.display_name }))} me={me} />
+          <ChoreForm
+            members={members.map((m) => ({ userId: m.user_id, name: m.display_name }))}
+            me={me}
+            countedToday={countedToday}
+          />
         </section>
 
         <section aria-labelledby="recent-title">
@@ -126,23 +170,23 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
             <p className="mt-2 text-muted">Nothing logged yet. Did the dishes today? Log it above.</p>
           ) : (
             <ul className="mt-2 divide-y divide-border">
-              {chores.map((chore) => (
-                <li key={chore.id} data-testid="core-item" className="flex items-start justify-between gap-3 py-3">
-                  <div className="min-w-0">
-                    <p className="break-words font-medium">{chore.title}</p>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
-                      <span>{nameOf(chore.done_by)}</span>
-                      {chore.user_id !== chore.done_by && (
-                        <span className="rounded bg-accent-soft px-1.5 text-xs font-medium text-accent-ink">
-                          Kudos from {nameOf(chore.user_id).replace(/^You$/, "you")}
-                        </span>
-                      )}
-                      <span>{timeAgo(chore.created_at)}</span>
+              {feed.map((item) =>
+                item.kind === "forfeit" ? (
+                  // Not a chore, so no core-item: the grading bot counts only saved chores.
+                  <li key={item.change.id} className="py-3">
+                    <p className="break-words">
+                      <span className="font-medium">{nameOf(item.change.changed_by)}</span> changed the forfeit to
+                      &ldquo;{item.change.forfeit}&rdquo;
                     </p>
-                  </div>
-                  <span className="shrink-0 font-semibold text-accent-ink tabular-nums">+{chore.points}</span>
-                </li>
-              ))}
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+                      <span className="rounded bg-stub px-1.5 text-xs font-medium text-stub-foreground">Forfeit</span>
+                      <span>{timeAgo(item.change.created_at)}</span>
+                    </p>
+                  </li>
+                ) : (
+                  <ChoreRow key={item.chore.id} chore={item.chore} me={me} nameOf={nameOf} />
+                ),
+              )}
             </ul>
           )}
         </section>
@@ -184,5 +228,38 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
         </section>
       </div>
     </main>
+  );
+}
+
+function ChoreRow({ chore, me, nameOf }: { chore: Chore; me: string; nameOf: (userId: string | null) => string }) {
+  const kudos = chore.user_id !== chore.done_by;
+  // Same rules as the chores delete policy; the database checks them again.
+  const action =
+    chore.user_id === me && isWithinHours(chore.created_at, 24)
+      ? "remove"
+      : kudos && chore.done_by === me
+        ? "decline"
+        : null;
+
+  return (
+    <li data-testid="core-item" className="py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="break-words font-medium">{chore.title}</p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+            <span>{nameOf(chore.done_by)}</span>
+            {kudos && (
+              <span className="rounded bg-accent-soft px-1.5 text-xs font-medium text-accent-ink">
+                Kudos from {nameOf(chore.user_id).replace(/^You$/, "you")}
+              </span>
+            )}
+            {chore.points === 0 && <span>Already counted today</span>}
+            <span>{timeAgo(chore.created_at)}</span>
+          </p>
+        </div>
+        <span className="shrink-0 font-semibold text-accent-ink tabular-nums">+{chore.points}</span>
+      </div>
+      {action && <ChoreActions choreId={chore.id} kind={action} />}
+    </li>
   );
 }
