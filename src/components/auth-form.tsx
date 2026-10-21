@@ -69,9 +69,16 @@ export function AuthForm({ mode, join }: { mode: Mode; join: string | null }) {
           />
         </div>
         <div className="space-y-1">
-          <label htmlFor={`${mode}-password`} className="block text-sm font-semibold">
-            Password
-          </label>
+          <div className="flex items-baseline justify-between gap-3">
+            <label htmlFor={`${mode}-password`} className="block text-sm font-semibold">
+              Password
+            </label>
+            {mode === "login" && (
+              <Link href="/forgot-password" className="inline-flex min-h-11 items-center text-sm font-semibold text-muted underline underline-offset-4 hover:text-foreground">
+                Forgot password?
+              </Link>
+            )}
+          </div>
           {/* A Show toggle instead of a confirm field: the grading bot fills only email and
               password, so a second required field would break its sign-up. */}
           <div className="relative">

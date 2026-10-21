@@ -7,6 +7,8 @@ export type FormState = {
   resetKey?: number;
   // Echoed back on failure so the email field is not cleared.
   email?: string;
+  // Shown on success when the form stays on screen, e.g. "Check your inbox".
+  message?: string;
 };
 
 export const initialFormState: FormState = {};
