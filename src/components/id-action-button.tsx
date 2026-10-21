@@ -7,9 +7,9 @@ import { type FormState, initialFormState } from "@/lib/form-state";
 type Action = (prev: FormState, formData: FormData) => Promise<FormState>;
 
 const looks = {
-  primary: "bg-accent text-accent-foreground hover:brightness-110",
-  quiet: "text-muted hover:bg-surface hover:text-foreground",
-  danger: "text-danger hover:bg-surface",
+  primary: "btn btn-primary min-h-11 px-5",
+  quiet: "rounded-full px-3 text-muted transition-colors hover:bg-surface hover:text-foreground",
+  danger: "rounded-full px-3 text-danger transition-colors hover:bg-surface",
 } as const;
 
 // One button that posts a single id to a server action, e.g. "Done" on a duty. With
@@ -34,7 +34,7 @@ export function IdActionButton({
 }) {
   const [state, formAction, pending] = useActionState(action, initialFormState);
   const [asking, setAsking] = useState(false);
-  const button = `min-h-11 rounded-md px-3 text-sm font-medium disabled:opacity-60`;
+  const button = `min-h-11 text-sm font-semibold disabled:opacity-60`;
 
   if (confirm && !asking) {
     return (

@@ -8,8 +8,8 @@ import { type Duty, DutiesSection } from "@/components/duties-section";
 import { type Nudge, NudgeBanner } from "@/components/nudge-banner";
 import { ForfeitForm } from "@/components/forfeit-form";
 import { JoinForm } from "@/components/join-form";
-import { LeaderboardSlab } from "@/components/leaderboard-slab";
 import { NameForm } from "@/components/name-form";
+import { ForfeitTicket, Scoreboard, WatchTag } from "@/components/scoreboard";
 import { buttonLooks, Panel } from "@/components/ui";
 import { cleanJoinCode } from "@/lib/form-state";
 import { currentMonth, currentWeek, isWithinHours, madridDay, timeAgo } from "@/lib/month";
@@ -157,133 +157,132 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
   // One line of race commentary under the board: who you're chasing, or how far ahead you are.
   const standing = alone ? undefined : raceLine(leaderboard, me, nameOf, month.daysLeft);
 
+  const heading = "font-display text-[2.25rem] sm:text-[2.75rem]";
+
   return (
-    <main className="mx-auto w-full max-w-3xl pb-16 sm:px-4 sm:pt-6">
-      {showInvitePrompt && (
-        <section className="mx-4 my-4 rounded-xl bg-accent-soft p-4 sm:mx-0 sm:mt-0 sm:p-5">
-          <h2 className="text-lg font-semibold">You were invited to a flat</h2>
-          <p className="mt-1 text-sm text-muted">Join it to share one board with your flatmates.</p>
-          <div className="mt-3">
-            <JoinForm defaultCode={inviteCode} alone={alone} currentCode={flat.join_code} />
-          </div>
-        </section>
+    <main className="mx-auto w-full max-w-[80rem] flex-1 px-4 pb-24 pt-2 sm:px-8 lg:px-12">
+      {(showInvitePrompt || myNudges.length > 0) && (
+        <div className="mb-6 space-y-4">
+          {showInvitePrompt && (
+            <section className="rounded-[20px] bg-accent-soft p-5 sm:p-6">
+              <h2 className="font-display text-[1.75rem]">You were invited to a flat</h2>
+              <p className="mt-1 text-muted">Join it to share one board with your flatmates.</p>
+              <div className="mt-4 max-w-md">
+                <JoinForm defaultCode={inviteCode} alone={alone} currentCode={flat.join_code} />
+              </div>
+            </section>
+          )}
+          <NudgeBanner nudges={myNudges} duties={dutyById} nameOf={nameOf} />
+        </div>
       )}
 
-      <NudgeBanner nudges={myNudges} duties={dutyById} nameOf={nameOf} />
-
-      <LeaderboardSlab
-        className="sm:rounded-2xl"
-        title={<h1 className="min-w-0 truncate text-lg font-medium">{flat.name}</h1>}
-        subtitle={`${month.name}, ${month.daysLeft === 0 ? "last day" : `${month.daysLeft} days left`}`}
-        rows={leaderboard.map((row) => ({
-          key: row.userId,
-          name: nameOf(row.userId),
-          points: row.points,
-          watch: lowest?.userId === row.userId,
-        }))}
-        note={alone ? "Just you so far. Invite your flatmates below and the race is on." : standing}
-        stub={
-          <>
-            <p className="text-sm">Lowest score on {month.lastDay} {month.name}:</p>
-            <p className="break-words text-lg font-semibold">{flat.forfeit}</p>
+      <div className="grid gap-x-12 gap-y-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:gap-x-16">
+        {/* The scoreboard and the forfeit stay in view on desktop while you scroll the rest. */}
+        <div className="lg:sticky lg:top-6 lg:self-start">
+          <Scoreboard
+            title={<h1 className="truncate">{flat.name}</h1>}
+            subtitle={`${month.name}, ${month.daysLeft === 0 ? "last day" : `${month.daysLeft} days left`}`}
+            rows={leaderboard.map((row) => ({
+              key: row.userId,
+              name: nameOf(row.userId),
+              points: row.points,
+              tag: lowest?.userId === row.userId ? <WatchTag /> : undefined,
+            }))}
+            note={alone ? "Just you so far. Invite your flatmates and the race is on." : standing}
+          />
+          <ForfeitTicket className="mx-3 mt-1 sm:mx-5">
+            <p className="text-sm font-semibold">
+              Lowest score on {month.lastDay} {month.name}
+            </p>
+            <p className="break-words font-display text-[2rem] sm:text-[2.25rem]">{flat.forfeit}</p>
             {lastForfeitChange && (
               <p className="mt-1 text-sm">
-                Set by {nameOf(lastForfeitChange.changed_by).replace(/^You$/, "you")},{" "}
-                {timeAgo(lastForfeitChange.created_at)}
+                Set by {nameOf(lastForfeitChange.changed_by).replace(/^You$/, "you")}, {timeAgo(lastForfeitChange.created_at)}
               </p>
             )}
-          </>
-        }
-      />
+          </ForfeitTicket>
+        </div>
 
-      <div className="mt-8 space-y-10 px-4 sm:px-0">
-        <DutiesSection
-          duties={duties}
-          doneBy={doneBy}
-          nudgedToday={nudgedToday}
-          members={memberOptions}
-          me={me}
-          today={week.weekday}
-          nameOf={nameOf}
-        />
+        <div className="space-y-14">
+          <section aria-labelledby="log-title" className="rounded-[20px] bg-surface p-5 sm:p-7">
+            <h2 id="log-title" className={heading}>
+              Log a chore
+            </h2>
+            <p className="mb-5 mt-1 text-muted">Credit for what you did, or kudos for a flatmate who covered for you.</p>
+            <ChoreForm members={memberOptions} me={me} countedToday={countedToday} />
+          </section>
 
-        <section aria-labelledby="log-title">
-          <h2 id="log-title" className="text-xl font-semibold tracking-tight">
-            Log a chore
-          </h2>
-          <p className="mb-4 mt-1 text-muted">Credit for what you did, or kudos for a flatmate who covered for you.</p>
-          <ChoreForm
+          <DutiesSection
+            duties={duties}
+            doneBy={doneBy}
+            nudgedToday={nudgedToday}
             members={memberOptions}
             me={me}
-            countedToday={countedToday}
+            today={week.weekday}
+            nameOf={nameOf}
           />
-        </section>
 
-        <section aria-labelledby="recent-title">
-          <h2 id="recent-title" className="text-xl font-semibold tracking-tight">
-            Recent chores
-          </h2>
-          {chores.length === 0 ? (
-            <p className="mt-2 text-muted">Nothing logged yet. Did the dishes today? Log it above.</p>
-          ) : (
-            <ul className="mt-2 divide-y divide-border">
-              {feed.map((item) =>
-                item.kind === "forfeit" ? (
-                  // Not a chore, so no core-item: the grading bot counts only saved chores.
-                  <li key={item.change.id} className="py-3">
-                    <p className="break-words">
-                      <span className="font-medium">{nameOf(item.change.changed_by)}</span> changed the forfeit to
-                      &ldquo;{item.change.forfeit}&rdquo;
-                    </p>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
-                      <span className="rounded bg-stub px-1.5 text-xs font-medium text-stub-foreground">Forfeit</span>
-                      <span>{timeAgo(item.change.created_at)}</span>
-                    </p>
-                  </li>
-                ) : (
-                  <ChoreRow key={item.chore.id} chore={item.chore} me={me} nameOf={nameOf} />
-                ),
-              )}
-            </ul>
-          )}
-        </section>
-
-        <section className="space-y-6 border-t border-border pt-8">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight">{alone ? "Invite your flatmates" : "Your flat"}</h2>
-            <p className="mt-1 text-sm text-muted">
-              Send them the link, or have them type the code on their board after signing up.
-            </p>
-            <p
-              className="mt-3 text-3xl font-semibold tracking-[0.25em] tabular-nums"
-              aria-label={`Flat code ${flat.join_code.split("").join(" ")}`}
-            >
-              {flat.join_code}
-            </p>
-            <p className="mt-1 break-all text-sm text-muted">{inviteLink}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <CopyButton text={inviteLink} label="Copy invite link" />
-              <a
-                href={`https://wa.me/?text=${whatsappText}`}
-                target="_blank"
-                rel="noreferrer"
-                className={buttonLooks.secondary}
-              >
-                Share on WhatsApp
-              </a>
-            </div>
-            {!alone && (
-              <p className="mt-3 text-sm text-muted">
-                In this flat: {members.map((member) => nameOf(member.user_id)).join(", ")}
-              </p>
+          <section aria-labelledby="recent-title">
+            <h2 id="recent-title" className={heading}>
+              Recent chores
+            </h2>
+            {chores.length === 0 ? (
+              <p className="mt-2 text-muted">Nothing logged yet. Did the dishes today? Log it above.</p>
+            ) : (
+              <ul className="mt-3 divide-y divide-border border-y border-border">
+                {feed.map((item) =>
+                  item.kind === "forfeit" ? (
+                    // Not a chore, so no core-item: the grading bot counts only saved chores.
+                    <li key={item.change.id} className="py-4">
+                      <p className="break-words">
+                        <span className="font-semibold">{nameOf(item.change.changed_by)}</span> changed the forfeit to
+                        &ldquo;{item.change.forfeit}&rdquo;
+                      </p>
+                      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+                        <span className="rounded-full bg-stub px-2 py-0.5 text-xs font-bold text-stub-foreground">Forfeit</span>
+                        <span>{timeAgo(item.change.created_at)}</span>
+                      </p>
+                    </li>
+                  ) : (
+                    <ChoreRow key={item.chore.id} chore={item.chore} me={me} nameOf={nameOf} />
+                  ),
+                )}
+              </ul>
             )}
-          </div>
-          <NameForm key={names.get(me) ?? ""} current={names.get(me) ?? ""} />
-          {/* Keyed so the field shows the new value after joining another flat or after a
-              flatmate changes it, instead of keeping a stale one that Save would write back. */}
-          <ForfeitForm key={`${flat.id}:${flat.forfeit}`} flatId={flat.id} current={flat.forfeit} />
-          {!showInvitePrompt && <JoinForm alone={alone} currentCode={flat.join_code} />}
-        </section>
+          </section>
+
+          <section aria-labelledby="flat-title" className="space-y-8 rounded-[20px] bg-surface p-5 sm:p-7">
+            <div>
+              <h2 id="flat-title" className={heading}>
+                {alone ? "Invite your flatmates" : "Your flat"}
+              </h2>
+              <p className="mt-1 text-muted">Send them the link, or have them type the code on their board after signing up.</p>
+              <p
+                className="mt-4 font-display text-[3rem] tracking-[0.2em] tabular-nums"
+                aria-label={`Flat code ${flat.join_code.split("").join(" ")}`}
+              >
+                {flat.join_code}
+              </p>
+              <p className="mt-1 break-all text-sm text-muted">{inviteLink}</p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <CopyButton text={inviteLink} label="Copy invite link" />
+                <a href={`https://wa.me/?text=${whatsappText}`} target="_blank" rel="noreferrer" className={buttonLooks.secondary}>
+                  Share on WhatsApp
+                </a>
+              </div>
+              {!alone && (
+                <p className="mt-4 text-sm text-muted">
+                  In this flat: {members.map((member) => nameOf(member.user_id)).join(", ")}
+                </p>
+              )}
+            </div>
+            <NameForm key={names.get(me) ?? ""} current={names.get(me) ?? ""} />
+            {/* Keyed so the field shows the new value after joining another flat or after a
+                flatmate changes it, instead of keeping a stale one that Save would write back. */}
+            <ForfeitForm key={`${flat.id}:${flat.forfeit}`} flatId={flat.id} current={flat.forfeit} />
+            {!showInvitePrompt && <JoinForm alone={alone} currentCode={flat.join_code} />}
+          </section>
+        </div>
       </div>
     </main>
   );
@@ -300,14 +299,14 @@ function ChoreRow({ chore, me, nameOf }: { chore: Chore; me: string; nameOf: (us
         : null;
 
   return (
-    <li data-testid="core-item" className="py-3">
-      <div className="flex items-start justify-between gap-3">
+    <li data-testid="core-item" className="py-4">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="break-words font-medium">{chore.title}</p>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+          <p className="break-words text-lg font-semibold">{chore.title}</p>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
             <span>{nameOf(chore.done_by)}</span>
             {kudos && (
-              <span className="rounded bg-accent-soft px-1.5 text-xs font-medium text-accent-ink">
+              <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-bold text-foreground">
                 Kudos from {nameOf(chore.user_id).replace(/^You$/, "you")}
               </span>
             )}
@@ -315,7 +314,7 @@ function ChoreRow({ chore, me, nameOf }: { chore: Chore; me: string; nameOf: (us
             <span>{timeAgo(chore.created_at)}</span>
           </p>
         </div>
-        <span className="shrink-0 font-semibold text-accent-ink tabular-nums">+{chore.points}</span>
+        <span className="shrink-0 font-display text-[2rem] text-accent-ink tabular-nums">+{chore.points}</span>
       </div>
       {action && <ChoreActions choreId={chore.id} kind={action} />}
     </li>

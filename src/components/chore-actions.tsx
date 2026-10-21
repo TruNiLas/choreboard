@@ -5,7 +5,7 @@ import { removeChore } from "@/app/app/actions";
 import { ErrorMessage } from "@/components/ui";
 import { initialFormState } from "@/lib/form-state";
 
-const textButton = "min-h-11 rounded-md px-2 text-sm font-medium hover:bg-surface disabled:opacity-60";
+const textButton = "min-h-11 rounded-full px-3 text-sm font-semibold transition-colors hover:bg-surface disabled:opacity-60";
 
 // "remove": your own entry, within 24 hours. "decline": a kudos someone gave you.
 // Two taps, because removing can't be undone.

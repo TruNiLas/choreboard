@@ -101,7 +101,7 @@ function ChoreFields({
                 titleRef.current.focus();
               }
             }}
-            className="min-h-11 rounded-full border border-border px-3 text-sm hover:border-accent"
+            className="min-h-11 rounded-full border-2 border-border bg-background px-4 text-sm font-semibold transition-[border-color,transform] hover:border-foreground active:translate-y-px"
           >
             {preset.title} <span className="text-muted tabular-nums">+{preset.points}</span>
           </button>

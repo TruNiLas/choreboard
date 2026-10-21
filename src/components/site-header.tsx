@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { logOut } from "@/app/auth-actions";
+import { Logo } from "@/components/logo";
 import { createClient, getUserId } from "@/lib/supabase/server";
 
 // Shown on every page. The logout button must be visible on every page while logged in.
@@ -8,34 +9,26 @@ export async function SiteHeader() {
   const signedIn = Boolean(await getUserId(supabase));
 
   return (
-    <header className="border-b border-border bg-background">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
-        <Link href={signedIn ? "/app" : "/"} className="flex min-h-11 items-center gap-2 text-lg font-medium tracking-tight">
-          <svg aria-hidden width="24" height="24" viewBox="0 0 24 24" className="text-accent">
-            <circle cx="12" cy="12" r="12" fill="currentColor" />
-            <path
-              d="M7 12.5l3.2 3.2L17 8.5"
-              fill="none"
-              stroke="var(--accent-foreground)"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          choreboard
+    <header className="relative z-20">
+      <div className="mx-auto flex h-18 max-w-[80rem] items-center justify-between gap-3 px-4 sm:px-8 lg:px-12">
+        <Link href={signedIn ? "/app" : "/"} className="flex min-h-11 items-center" aria-label="Choreboard home">
+          <Logo />
         </Link>
         {signedIn ? (
           <form action={logOut}>
             <button
               type="submit"
               data-testid="logout"
-              className="min-h-11 rounded-md px-3 text-muted hover:text-foreground"
+              className="min-h-11 rounded-full px-4 font-semibold text-muted transition-colors hover:bg-surface hover:text-foreground"
             >
               Log out
             </button>
           </form>
         ) : (
-          <Link href="/login" className="flex min-h-11 items-center px-3 text-muted hover:text-foreground">
+          <Link
+            href="/login"
+            className="flex min-h-11 items-center rounded-full px-4 font-semibold text-muted transition-colors hover:bg-surface hover:text-foreground"
+          >
             Log in
           </Link>
         )}

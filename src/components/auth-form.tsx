@@ -42,10 +42,10 @@ export function AuthForm({ mode, join }: { mode: Mode; join: string | null }) {
 
   return (
     <div className="mx-auto w-full max-w-sm">
-      <h1 className="text-3xl font-semibold tracking-[-0.03em]">{copy.title}</h1>
-      {intro && <p className="mt-1 text-muted">{intro}</p>}
+      <h1 className="font-display text-[3rem] sm:text-[3.5rem]">{copy.title}</h1>
+      {intro && <p className="mt-2 text-lg text-muted">{intro}</p>}
       {join && (
-        <p className="mt-4 rounded-xl bg-accent-soft px-4 py-3 text-sm">
+        <p className="mt-5 rounded-[14px] bg-accent-soft px-4 py-3 text-sm">
           You were invited to a flat (code <span className="font-semibold tracking-widest">{join}</span>). You can
           join it right after this step.
         </p>
@@ -54,7 +54,7 @@ export function AuthForm({ mode, join }: { mode: Mode; join: string | null }) {
       <form action={formAction} className="mt-8 space-y-5" noValidate>
         {join && <input type="hidden" name="join" value={join} />}
         <div className="space-y-1">
-          <label htmlFor={`${mode}-email`} className="block text-sm font-medium">
+          <label htmlFor={`${mode}-email`} className="block text-sm font-semibold">
             Email
           </label>
           <input
@@ -69,7 +69,7 @@ export function AuthForm({ mode, join }: { mode: Mode; join: string | null }) {
           />
         </div>
         <div className="space-y-1">
-          <label htmlFor={`${mode}-password`} className="block text-sm font-medium">
+          <label htmlFor={`${mode}-password`} className="block text-sm font-semibold">
             Password
           </label>
           {/* A Show toggle instead of a confirm field: the grading bot fills only email and
@@ -91,7 +91,7 @@ export function AuthForm({ mode, join }: { mode: Mode; join: string | null }) {
               onClick={() => setShowPassword((shown) => !shown)}
               aria-pressed={showPassword}
               aria-controls={`${mode}-password`}
-              className="absolute inset-y-0 right-0 min-w-16 rounded-md px-3 text-sm font-medium text-muted hover:text-foreground"
+              className="absolute inset-y-1 right-1 min-w-16 rounded-full px-3 text-sm font-semibold text-muted transition-colors hover:bg-background hover:text-foreground"
             >
               {showPassword ? "Hide" : "Show"}
             </button>
@@ -105,14 +105,14 @@ export function AuthForm({ mode, join }: { mode: Mode; join: string | null }) {
 
         {state.error && <ErrorMessage>{state.error}</ErrorMessage>}
 
-        <Button type="submit" disabled={pending} data-testid={`${mode}-submit`} className="w-full">
+        <Button type="submit" disabled={pending} data-testid={`${mode}-submit`} className="mt-2 w-full">
           {pending ? copy.pending : copy.submit}
         </Button>
       </form>
 
       <p className="mt-6 text-muted">
         {copy.switchText}{" "}
-        <Link href={switchHref} className="font-medium text-foreground underline underline-offset-4">
+        <Link href={switchHref} className="font-semibold text-foreground underline underline-offset-4">
           {copy.switchLabel}
         </Link>
       </p>

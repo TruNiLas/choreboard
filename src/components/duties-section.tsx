@@ -30,7 +30,7 @@ export function DutiesSection({
 
   return (
     <section aria-labelledby="duties-title">
-      <h2 id="duties-title" className="text-xl font-semibold tracking-tight">
+      <h2 id="duties-title" className="font-display text-[2.25rem] sm:text-[2.75rem]">
         This week&rsquo;s duties
       </h2>
       <p className="mt-1 text-muted">The jobs your flat agreed on. Tick one off and the points are yours.</p>
@@ -40,7 +40,7 @@ export function DutiesSection({
           No duties yet. Agree who takes the bins out and who does the bathroom, then add them below.
         </p>
       ) : (
-        <ul className="mt-2 divide-y divide-border">
+        <ul className="mt-3 divide-y divide-border border-y border-border">
           {sorted.map((duty) => (
             <DutyRow
               key={duty.id}
@@ -56,8 +56,8 @@ export function DutiesSection({
       )}
 
       {/* Bordered, not a grey panel: the inputs inside are grey (surface) themselves. */}
-      <details className="mt-4 rounded-xl border border-border p-4 sm:p-5" open={sorted.length === 0}>
-        <summary className="min-h-11 cursor-pointer content-center font-medium">Add a duty</summary>
+      <details className="mt-5 rounded-[20px] border-2 border-border p-5 sm:p-6" open={sorted.length === 0}>
+        <summary className="min-h-11 cursor-pointer content-center font-semibold">Add a duty</summary>
         <div className="mt-3">
           <AddDutyForm members={members} me={me} today={today} />
         </div>
@@ -95,16 +95,16 @@ function DutyRow({
       className: "text-success",
     };
   } else if (duty.weekday === today) {
-    status = { text: "Due today", className: "rounded bg-accent-soft px-1.5 text-accent-ink" };
+    status = { text: "Due today", className: "rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-accent-foreground" };
   } else if (duty.weekday < today) {
-    status = { text: `Still open since ${day}`, className: "rounded bg-surface px-1.5 text-foreground" };
+    status = { text: `Still open since ${day}`, className: "rounded-full bg-accent-soft px-2 py-0.5 text-xs font-bold text-foreground" };
   } else {
     status = { text: `Coming up ${day}`, className: "text-muted" };
   }
 
   return (
-    <li className="py-3">
-      <p className="break-words font-medium">{duty.title}</p>
+    <li className="py-4">
+      <p className="break-words text-lg font-semibold">{duty.title}</p>
       <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
         <span>
           {nameOf(duty.assignee)}, every {day}
@@ -134,7 +134,7 @@ function DutyRow({
             href={`https://wa.me/?text=${whatsapp}`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-muted hover:bg-surface hover:text-foreground"
+            className="inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold text-muted transition-colors hover:bg-surface hover:text-foreground"
           >
             Nudge on WhatsApp
           </a>

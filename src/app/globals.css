@@ -1,46 +1,47 @@
 @import "tailwindcss";
 
 /* Semantic colour tokens. Components use these (bg-surface, text-muted, ...) rather than
-   palette colours, so dark mode only has to be defined once, here. See DESIGN.md. */
+   palette colours, so dark mode only has to be defined once, here. What each token means
+   in the current palette (Tile, Ink, Glove, Suds) is in DESIGN.md. */
 :root {
-  --background: #ffffff;
-  --surface: #f4f3f6;
-  --foreground: #0f0d12;
-  --muted: #6b6772;
-  --border: #e6e4ea;
-  --accent: #6a22c9;
-  --accent-foreground: #ffffff;
-  --accent-soft: #efe6fb;
-  --accent-ink: #6a22c9;
-  --board: #6a22c9;
+  --background: #eef3f5;
+  --surface: #ffffff;
+  --foreground: #13213c;
+  --muted: #56677c;
+  --border: #cdd9df;
+  --accent: #ffc83d;
+  --accent-foreground: #13213c;
+  --accent-edge: #d9a21c;
+  --accent-soft: #fff2cc;
+  --accent-ink: #178a50;
+  --board: #13213c;
   --board-foreground: #ffffff;
-  --board-muted: rgb(255 255 255 / 0.72);
-  --board-line: rgb(255 255 255 / 0.16);
-  --stub: #ffd9c7;
-  --stub-foreground: #3a1d10;
-  --danger: #b42318;
-  --success: #1f7a4d;
+  --board-muted: rgb(255 255 255 / 0.64);
+  --board-line: rgb(255 255 255 / 0.12);
+  --board-highlight: #4fd690;
+  --stub: #ffc83d;
+  --stub-foreground: #13213c;
+  --danger: #c2361f;
+  --success: #178a50;
+  --ink-edge: #13213c;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #121014;
-    --surface: #1c1a20;
-    --foreground: #f4f2f7;
-    --muted: #a5a0ad;
-    --border: #2c2931;
-    --accent: #a774f0;
-    --accent-foreground: #160f20;
-    --accent-soft: #2b2139;
-    --accent-ink: #c4a3f6;
-    --board: #3b1676;
-    --board-foreground: #ffffff;
-    --board-muted: rgb(255 255 255 / 0.66);
-    --board-line: rgb(255 255 255 / 0.14);
-    --stub: #f2c3ad;
-    --stub-foreground: #2b140a;
-    --danger: #f97066;
-    --success: #4ade80;
+    --background: #0d1628;
+    --surface: #15213a;
+    --foreground: #eef3f5;
+    --muted: #9aa9bd;
+    --border: #24344f;
+    --accent-edge: #c78f0e;
+    --accent-soft: #3a3216;
+    --accent-ink: #4fd690;
+    --board: #070e1c;
+    --board-muted: rgb(255 255 255 / 0.6);
+    --board-line: rgb(255 255 255 / 0.1);
+    --danger: #ff7a63;
+    --success: #4fd690;
+    --ink-edge: #000000;
   }
 }
 
@@ -52,17 +53,24 @@
   --color-border: var(--border);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-edge: var(--accent-edge);
   --color-accent-soft: var(--accent-soft);
   --color-accent-ink: var(--accent-ink);
   --color-board: var(--board);
   --color-board-foreground: var(--board-foreground);
   --color-board-muted: var(--board-muted);
   --color-board-line: var(--board-line);
+  --color-board-highlight: var(--board-highlight);
   --color-stub: var(--stub);
   --color-stub-foreground: var(--stub-foreground);
   --color-danger: var(--danger);
   --color-success: var(--success);
-  --font-sans: var(--font-familjen);
+  --font-sans: var(--font-figtree);
+  --font-display: var(--font-big-shoulders);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -71,19 +79,117 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 3px solid var(--accent-ink);
+  outline-offset: 3px;
 }
 
-/* The forfeit ticket's scalloped top edge: half-circles of the board colour bitten out
-   of the stub, so it reads as torn off the leaderboard above it. */
-@utility stub-edge {
+/* Display type: the scoreboard face. Tight, condensed, sentence case. */
+@utility font-display {
+  font-family: var(--font-display);
+  font-weight: 850;
+  letter-spacing: -0.01em;
+  line-height: 0.92;
+  font-variation-settings: "opsz" 72;
+}
+
+/* Bathroom tiles: a faint grid behind hero areas. */
+@utility tile-grid {
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: -1px -1px;
+}
+
+@utility tile-grid-board {
+  background-image:
+    linear-gradient(var(--board-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--board-line) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: -1px -1px;
+}
+
+/* Physical buttons: a darker bottom edge that the button presses into. */
+@utility btn {
+  display: inline-flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding-inline: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    transform 150ms cubic-bezier(0.3, 0.7, 0.4, 1),
+    box-shadow 150ms cubic-bezier(0.3, 0.7, 0.4, 1),
+    filter 150ms;
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+  &:active:not(:disabled) {
+    transform: translateY(3px);
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+@utility btn-primary {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  box-shadow: 0 4px 0 var(--accent-edge);
+  &:hover:not(:disabled) {
+    box-shadow: 0 5px 0 var(--accent-edge);
+  }
+  &:active:not(:disabled) {
+    box-shadow: 0 1px 0 var(--accent-edge);
+  }
+}
+
+@utility btn-secondary {
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow:
+    inset 0 0 0 2px var(--foreground),
+    0 4px 0 var(--ink-edge);
+  &:hover:not(:disabled) {
+    box-shadow:
+      inset 0 0 0 2px var(--foreground),
+      0 5px 0 var(--ink-edge);
+  }
+  &:active:not(:disabled) {
+    box-shadow:
+      inset 0 0 0 2px var(--foreground),
+      0 1px 0 var(--ink-edge);
+  }
+}
+
+/* The forfeit ticket: perforated top edge, like a stub torn off a roll. */
+@utility ticket {
   position: relative;
+  background: var(--stub);
+  color: var(--stub-foreground);
   &::before {
     content: "";
     position: absolute;
-    inset: 0 0 auto;
-    height: 5px;
-    background: radial-gradient(circle at 7px 0, var(--board) 4px, transparent 4.5px) 0 0 / 14px 5px repeat-x;
+    inset: -6px 0 auto;
+    height: 12px;
+    background: radial-gradient(circle at 9px 6px, var(--ticket-gap, var(--background)) 5px, transparent 5.5px) 0 0 / 18px 12px
+      repeat-x;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }

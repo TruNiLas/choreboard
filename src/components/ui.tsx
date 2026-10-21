@@ -1,16 +1,14 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-// Generic building blocks. No Choreboard knowledge in here.
+// Generic building blocks. No Choreboard knowledge in here. The button and ticket styles
+// themselves live in globals.css (btn, btn-primary, btn-secondary).
 
 export const inputClass =
-  "block min-h-12 w-full rounded-md border border-transparent bg-surface px-3 text-base text-foreground placeholder:text-muted focus:border-accent focus:outline-none";
-
-const buttonBase =
-  "inline-flex min-h-12 items-center justify-center rounded-md px-5 font-medium transition-colors disabled:opacity-60";
+  "block min-h-13 w-full rounded-[14px] border-2 border-border bg-surface px-4 text-base text-foreground placeholder:text-muted transition-colors focus:border-foreground focus:outline-none";
 
 export const buttonLooks = {
-  primary: `${buttonBase} bg-accent text-accent-foreground hover:brightness-110`,
-  secondary: `${buttonBase} bg-surface text-foreground hover:bg-border`,
+  primary: "btn btn-primary",
+  secondary: "btn btn-secondary",
 } as const;
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: keyof typeof buttonLooks };
@@ -21,12 +19,12 @@ export function Button({ variant = "primary", className = "", ...props }: Button
 
 export function ErrorMessage({ children }: { children: ReactNode }) {
   return (
-    <p role="alert" className="text-sm text-danger">
+    <p role="alert" className="text-sm font-medium text-danger">
       {children}
     </p>
   );
 }
 
 export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-xl bg-surface p-4 sm:p-5 ${className}`}>{children}</section>;
+  return <section className={`rounded-[20px] bg-surface p-5 sm:p-6 ${className}`}>{children}</section>;
 }

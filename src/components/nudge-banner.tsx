@@ -18,7 +18,7 @@ export function NudgeBanner({
   if (nudges.length === 0) return null;
 
   return (
-    <section aria-label="Nudges" className="mx-4 my-4 space-y-3 rounded-xl bg-accent-soft p-4 sm:mx-0 sm:mt-0 sm:p-5">
+    <section aria-label="Nudges" className="space-y-4 rounded-[20px] bg-accent-soft p-5 sm:p-6">
       {nudges.map((nudge) => {
         const duty = duties.get(nudge.duty_id);
         if (!duty) return null;
