@@ -11,6 +11,7 @@ export function DutiesSection({
   duties,
   doneBy,
   nudgedToday,
+  nudgedBy,
   members,
   me,
   today,
@@ -21,6 +22,8 @@ export function DutiesSection({
   doneBy: Map<string, string>;
   // duty ids I already nudged someone about today
   nudgedToday: Set<string>;
+  // duty id -> who nudged me about it (my open duties only)
+  nudgedBy: Map<string, string[]>;
   members: Member[];
   me: string;
   today: number;
@@ -47,6 +50,7 @@ export function DutiesSection({
               duty={duty}
               doneBy={doneBy.get(duty.id)}
               nudged={nudgedToday.has(duty.id)}
+              nudgers={nudgedBy.get(duty.id)}
               me={me}
               today={today}
               nameOf={nameOf}
@@ -70,6 +74,7 @@ function DutyRow({
   duty,
   doneBy,
   nudged,
+  nudgers,
   me,
   today,
   nameOf,
@@ -77,6 +82,7 @@ function DutyRow({
   duty: Duty;
   doneBy: string | undefined;
   nudged: boolean;
+  nudgers?: string[];
   me: string;
   today: number;
   nameOf: (userId: string | null) => string;
@@ -110,6 +116,11 @@ function DutyRow({
           {nameOf(duty.assignee)}, every {day}
         </span>
         <span className={`text-sm font-medium ${status.className}`}>{status.text}</span>
+        {!doneBy && nudgers && nudgers.length > 0 && (
+          <span className="rounded-full bg-foreground px-2 py-0.5 text-xs font-bold text-background">
+            {nudgers.join(" and ")} nudged you
+          </span>
+        )}
       </p>
 
       <div className="-ml-3 mt-1 flex flex-wrap items-center gap-x-1">

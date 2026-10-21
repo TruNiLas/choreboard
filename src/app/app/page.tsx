@@ -154,6 +154,13 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
     (nudge) => nudge.to_user === me && !doneBy.has(nudge.duty_id) && dutyById.get(nudge.duty_id)?.assignee === me,
   );
 
+  const nudgedBy = new Map<string, string[]>();
+  for (const nudge of myNudges) {
+    const from = nameOf(nudge.from_user);
+    const list = nudgedBy.get(nudge.duty_id) ?? [];
+    if (!list.includes(from)) nudgedBy.set(nudge.duty_id, [...list, from]);
+  }
+
   // One line of race commentary under the board: who you're chasing, or how far ahead you are.
   const standing = alone ? undefined : raceLine(leaderboard, me, nameOf, month.daysLeft);
 
@@ -216,6 +223,7 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
             duties={duties}
             doneBy={doneBy}
             nudgedToday={nudgedToday}
+            nudgedBy={nudgedBy}
             members={memberOptions}
             me={me}
             today={week.weekday}
