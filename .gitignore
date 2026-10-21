@@ -20,3 +20,4 @@ research/
 *.pem
 npm-debug.log*
 /coverage
+.env*
