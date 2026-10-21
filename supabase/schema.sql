@@ -280,12 +280,71 @@ create trigger flats_log_forfeit_change
   when (old.forfeit is distinct from new.forfeit)
   execute function public.log_forfeit_change();
 
+-- Duties: a weekly job with a day ("Bins, Sam, Tuesday") ---------------------------------
+-- A duty is done for the week once a chore is logged against it (chores.duty_id). The
+-- week runs Monday to Sunday, Madrid time; the app works out the status from that.
+
+create table if not exists public.duties (
+  id uuid primary key default gen_random_uuid(),
+  flat_id uuid not null default public.my_flat_id() references public.flats on delete cascade,
+  title text not null check (char_length(btrim(title)) between 1 and 60),
+  assignee uuid not null references auth.users on delete cascade,
+  -- ISO weekday: 1 = Monday ... 7 = Sunday
+  weekday smallint not null check (weekday between 1 and 7),
+  created_by uuid default auth.uid() references auth.users on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists duties_flat_idx on public.duties (flat_id);
+
+alter table public.chores
+  add column if not exists duty_id uuid references public.duties on delete set null;
+
+create index if not exists chores_duty_created_idx on public.chores (duty_id, created_at desc);
+
+-- Nudges: a private reminder about an open duty, seen only by sender and recipient ------
+-- One per sender, duty and day, so nobody can spam a flatmate.
+
+create table if not exists public.nudges (
+  id uuid primary key default gen_random_uuid(),
+  flat_id uuid not null default public.my_flat_id() references public.flats on delete cascade,
+  duty_id uuid not null references public.duties on delete cascade,
+  from_user uuid not null default auth.uid() references auth.users on delete cascade,
+  -- always the duty's assignee, set by the trigger below, never chosen by the browser
+  to_user uuid not null references auth.users on delete cascade,
+  nudge_day date not null default (now() at time zone 'Europe/Madrid')::date,
+  created_at timestamptz not null default now(),
+  unique (duty_id, from_user, nudge_day)
+);
+
+create index if not exists nudges_to_user_created_idx on public.nudges (to_user, created_at desc);
+
+create or replace function public.set_nudge_recipient()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  -- Runs as the sender, so RLS only finds duties in their own flat. Anything else leaves
+  -- to_user null and the insert fails.
+  select assignee into new.to_user from public.duties where id = new.duty_id;
+  return new;
+end
+$$;
+
+drop trigger if exists nudges_set_recipient on public.nudges;
+create trigger nudges_set_recipient
+  before insert on public.nudges
+  for each row execute function public.set_nudge_recipient();
+
 -- Row Level Security ----------------------------------------------------------------------
 
 alter table public.flats enable row level security;
 alter table public.flat_members enable row level security;
 alter table public.chores enable row level security;
 alter table public.forfeit_changes enable row level security;
+alter table public.duties enable row level security;
+alter table public.nudges enable row level security;
 
 drop policy if exists "Members read their flat" on public.flats;
 create policy "Members read their flat" on public.flats
@@ -326,6 +385,10 @@ create policy "Members log chores for their flat" on public.chores
       select 1 from public.flat_members m
       where m.user_id = done_by and m.flat_id = (select public.my_flat_id())
     )
+    and (
+      duty_id is null
+      or exists (select 1 from public.duties d where d.id = duty_id and d.flat_id = (select public.my_flat_id()))
+    )
   );
 
 -- Whoever logged an entry can remove it for 24 hours (typos, double logs). Whoever got a
@@ -346,6 +409,50 @@ create policy "Members read their flat's forfeit changes" on public.forfeit_chan
   for select to authenticated
   using (flat_id = (select public.my_flat_id()));
 
+drop policy if exists "Members read their flat's duties" on public.duties;
+create policy "Members read their flat's duties" on public.duties
+  for select to authenticated
+  using (flat_id = (select public.my_flat_id()));
+
+drop policy if exists "Members add duties for flatmates" on public.duties;
+create policy "Members add duties for flatmates" on public.duties
+  for insert to authenticated
+  with check (
+    flat_id = (select public.my_flat_id())
+    and created_by = (select auth.uid())
+    and exists (
+      select 1 from public.flat_members m
+      where m.user_id = assignee and m.flat_id = (select public.my_flat_id())
+    )
+  );
+
+-- The flat sets its own rules, so any member can remove a duty. The app asks first.
+drop policy if exists "Members remove their flat's duties" on public.duties;
+create policy "Members remove their flat's duties" on public.duties
+  for delete to authenticated
+  using (flat_id = (select public.my_flat_id()));
+
+drop policy if exists "Sender and recipient read a nudge" on public.nudges;
+create policy "Sender and recipient read a nudge" on public.nudges
+  for select to authenticated
+  using (from_user = (select auth.uid()) or to_user = (select auth.uid()));
+
+-- Checked after the trigger has set to_user, so nudging yourself is refused.
+drop policy if exists "Members nudge a flatmate about their duty" on public.nudges;
+create policy "Members nudge a flatmate about their duty" on public.nudges
+  for insert to authenticated
+  with check (
+    from_user = (select auth.uid())
+    and flat_id = (select public.my_flat_id())
+    and to_user <> (select auth.uid())
+    and exists (select 1 from public.duties d where d.id = duty_id and d.flat_id = (select public.my_flat_id()))
+  );
+
+drop policy if exists "Recipients dismiss their nudges" on public.nudges;
+create policy "Recipients dismiss their nudges" on public.nudges
+  for delete to authenticated
+  using (to_user = (select auth.uid()));
+
 -- Grants ----------------------------------------------------------------------------------
 -- "Automatically expose new tables" is off, so access is granted explicitly, column by
 -- column where it matters: members can rename the flat and change the forfeit, but never
@@ -353,15 +460,21 @@ create policy "Members read their flat's forfeit changes" on public.forfeit_chan
 -- choose a chore's title and who did it. Forfeit changes are read-only; the trigger
 -- writes them.
 
-revoke all on public.flats, public.flat_members, public.chores, public.forfeit_changes
+revoke all on public.flats, public.flat_members, public.chores, public.forfeit_changes,
+  public.duties, public.nudges
   from anon, authenticated;
 
-grant select on public.flats, public.flat_members, public.chores, public.forfeit_changes
+grant select on public.flats, public.flat_members, public.chores, public.forfeit_changes,
+  public.duties, public.nudges
   to authenticated;
 grant update (name, forfeit) on public.flats to authenticated;
 grant update (display_name) on public.flat_members to authenticated;
-grant insert (title, done_by) on public.chores to authenticated;
+grant insert (title, done_by, duty_id) on public.chores to authenticated;
 grant delete on public.chores to authenticated;
+grant insert (title, assignee, weekday) on public.duties to authenticated;
+grant delete on public.duties to authenticated;
+grant insert (duty_id) on public.nudges to authenticated;
+grant delete on public.nudges to authenticated;
 
 revoke execute on function
   public.my_flat_id(),
@@ -369,6 +482,7 @@ revoke execute on function
   public.chore_category(text),
   public.chore_points(text),
   public.set_chore_points(),
+  public.set_nudge_recipient(),
   public.log_forfeit_change(),
   public.generate_join_code(),
   public.handle_new_user(),

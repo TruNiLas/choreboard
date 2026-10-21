@@ -4,13 +4,15 @@ import { redirect } from "next/navigation";
 import { ChoreActions } from "@/components/chore-actions";
 import { ChoreForm } from "@/components/chore-form";
 import { CopyButton } from "@/components/copy-button";
+import { type Duty, DutiesSection } from "@/components/duties-section";
+import { type Nudge, NudgeBanner } from "@/components/nudge-banner";
 import { ForfeitForm } from "@/components/forfeit-form";
 import { JoinForm } from "@/components/join-form";
 import { LeaderboardSlab } from "@/components/leaderboard-slab";
 import { NameForm } from "@/components/name-form";
 import { buttonLooks, Panel } from "@/components/ui";
 import { cleanJoinCode } from "@/lib/form-state";
-import { currentMonth, isWithinHours, madridDay, timeAgo } from "@/lib/month";
+import { currentMonth, currentWeek, isWithinHours, madridDay, timeAgo } from "@/lib/month";
 import { repeatKey } from "@/lib/points";
 import { createClient, getUserId } from "@/lib/supabase/server";
 
@@ -29,11 +31,21 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
   if (!me) redirect("/login");
 
   const month = currentMonth();
+  const week = currentWeek();
   const { join } = await searchParams;
   const inviteCode = cleanJoinCode(join);
 
-  // RLS scopes every read to the caller's own flat.
-  const [flatResult, membersResult, recentResult, monthResult, forfeitResult] = await Promise.all([
+  // RLS scopes every read to the caller's own flat (nudges: only ones I sent or received).
+  const [
+    flatResult,
+    membersResult,
+    recentResult,
+    monthResult,
+    forfeitResult,
+    dutiesResult,
+    weekDutyChoresResult,
+    nudgesResult,
+  ] = await Promise.all([
     supabase.from("flats").select("id, name, join_code, forfeit").single(),
     supabase.from("flat_members").select("user_id, display_name").order("joined_at"),
     supabase
@@ -50,6 +62,18 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
       .select("id, changed_by, forfeit, created_at")
       .order("created_at", { ascending: false })
       .limit(20),
+    supabase.from("duties").select("id, title, assignee, weekday"),
+    supabase
+      .from("chores")
+      .select("duty_id, done_by, created_at")
+      .not("duty_id", "is", null)
+      .gte("created_at", week.startIso)
+      .order("created_at"),
+    supabase
+      .from("nudges")
+      .select("id, duty_id, from_user, to_user, nudge_day")
+      .gte("created_at", week.startIso)
+      .order("created_at", { ascending: false }),
   ]);
 
   const flat = flatResult.data;
@@ -112,6 +136,26 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
   const whatsappText = encodeURIComponent(`Join our flat on Choreboard: ${inviteLink}`);
   const alone = members.length <= 1;
   const showInvitePrompt = inviteCode && inviteCode !== flat.join_code;
+  const memberOptions = members.map((m) => ({ userId: m.user_id, name: m.display_name }));
+
+  // Duties: the first entry logged against a duty this week is what counts as done.
+  const duties: Duty[] = dutiesResult.data ?? [];
+  const dutyById = new Map(duties.map((duty) => [duty.id, duty]));
+  const doneBy = new Map<string, string>();
+  for (const chore of weekDutyChoresResult.data ?? []) {
+    if (chore.duty_id && !doneBy.has(chore.duty_id)) doneBy.set(chore.duty_id, chore.done_by);
+  }
+  const nudges = nudgesResult.data ?? [];
+  const nudgedToday = new Set(
+    nudges.filter((nudge) => nudge.from_user === me && nudge.nudge_day === today).map((nudge) => nudge.duty_id),
+  );
+  // Only nudges still worth acting on: about my duties that nobody has ticked off yet.
+  const myNudges: Nudge[] = nudges.filter(
+    (nudge) => nudge.to_user === me && !doneBy.has(nudge.duty_id) && dutyById.get(nudge.duty_id)?.assignee === me,
+  );
+
+  // One line of race commentary under the board: who you're chasing, or how far ahead you are.
+  const standing = alone ? undefined : raceLine(leaderboard, me, nameOf, month.daysLeft);
 
   return (
     <main className="mx-auto w-full max-w-3xl pb-16 sm:px-4 sm:pt-6">
@@ -125,6 +169,8 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
         </section>
       )}
 
+      <NudgeBanner nudges={myNudges} duties={dutyById} nameOf={nameOf} />
+
       <LeaderboardSlab
         className="sm:rounded-2xl"
         title={<h1 className="min-w-0 truncate text-lg font-medium">{flat.name}</h1>}
@@ -135,7 +181,7 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
           points: row.points,
           watch: lowest?.userId === row.userId,
         }))}
-        note={alone ? "Just you so far. Invite your flatmates below and the race is on." : undefined}
+        note={alone ? "Just you so far. Invite your flatmates below and the race is on." : standing}
         stub={
           <>
             <p className="text-sm">Lowest score on {month.lastDay} {month.name}:</p>
@@ -151,13 +197,23 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
       />
 
       <div className="mt-8 space-y-10 px-4 sm:px-0">
+        <DutiesSection
+          duties={duties}
+          doneBy={doneBy}
+          nudgedToday={nudgedToday}
+          members={memberOptions}
+          me={me}
+          today={week.weekday}
+          nameOf={nameOf}
+        />
+
         <section aria-labelledby="log-title">
           <h2 id="log-title" className="text-xl font-semibold tracking-tight">
             Log a chore
           </h2>
           <p className="mb-4 mt-1 text-muted">Credit for what you did, or kudos for a flatmate who covered for you.</p>
           <ChoreForm
-            members={members.map((m) => ({ userId: m.user_id, name: m.display_name }))}
+            members={memberOptions}
             me={me}
             countedToday={countedToday}
           />
@@ -264,4 +320,29 @@ function ChoreRow({ chore, me, nameOf }: { chore: Chore; me: string; nameOf: (us
       {action && <ChoreActions choreId={chore.id} kind={action} />}
     </li>
   );
+}
+
+// "2 points behind Priya, 3 days left." Encouraging, never a dig at anyone.
+function raceLine(
+  leaderboard: { userId: string; points: number }[],
+  me: string,
+  nameOf: (userId: string | null) => string,
+  daysLeft: number,
+) {
+  const index = leaderboard.findIndex((row) => row.userId === me);
+  if (index < 0 || leaderboard.length < 2) return undefined;
+
+  const left = daysLeft === 0 ? "last day of the month" : `${daysLeft} ${daysLeft === 1 ? "day" : "days"} left`;
+  const mine = leaderboard[index].points;
+  const points = (n: number) => `${n} ${n === 1 ? "point" : "points"}`;
+
+  if (index === 0) {
+    const next = leaderboard[1];
+    if (next.points === mine) return `Level with ${nameOf(next.userId)} at the top, ${left}.`;
+    return `You lead by ${points(mine - next.points)}, ${left}.`;
+  }
+
+  const ahead = leaderboard[index - 1];
+  if (ahead.points === mine) return `Level with ${nameOf(ahead.userId)}, ${left}.`;
+  return `${points(ahead.points - mine)} behind ${nameOf(ahead.userId)}, ${left}.`;
 }

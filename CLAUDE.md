@@ -53,13 +53,20 @@ An automated bot grades this app on its public Vercel URL, acting like a strange
    lowest score at month end does the forfeit.
 4. Members edit their own display name on `/app`. New sign-ups get a first guess from
    their email ("maria.gonzalez.2023@..." becomes "Maria").
+5. Duties: a weekly job with a day ("Bins, Sam, Tuesday"). Any member adds or removes
+   them. Ticking one off logs a chore (`chores.duty_id`) by whoever ticked it, so covering
+   for a flatmate earns the points. Status resets every Monday (Madrid time).
+6. Nudges: one per sender, duty and day, only on a flatmate's open duty, visible only to
+   sender and recipient. Plus a pre-written WhatsApp link. Under the leaderboard, one
+   race line: "2 points behind Priya, 3 days left".
 
 Scoring lives in `supabase/schema.sql` (`chore_words`, `chore_category`, `chore_points`)
 and is mirrored in `src/lib/points.ts` for the preview; keep both in sync. Quick-pick
 titles live in `src/lib/presets.ts` and take their points from `points.ts`.
 
-v2, not now: doubting a self-report, custom points confirmed by flatmates, backdating, reminders by email, nudges, assigned chores,
-leaving a flat.
+Not yet: doubting a self-report, custom points confirmed by flatmates, backdating,
+reminders by email or push, leaving a flat, Google login (allowed only alongside email +
+password, never instead of it).
 
 ## Stack
 
