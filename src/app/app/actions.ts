@@ -50,6 +50,26 @@ export async function joinFlat(prev: FormState, formData: FormData): Promise<For
   redirect("/app");
 }
 
+export async function setDisplayName(prev: FormState, formData: FormData): Promise<FormState> {
+  const { supabase, userId } = await signedInClient();
+
+  // Collapse runs of spaces so "  Nico   T " can't sneak past the length check looking empty.
+  const name = String(formData.get("display_name") ?? "").replace(/\s+/g, " ").trim();
+  if (!name) return { ...prev, error: "Write the name your flatmates know you by." };
+  if (name.length > 40) return { ...prev, error: "Keep it under 40 characters." };
+
+  // RLS and the column grant only allow changing your own display name.
+  const { data, error } = await supabase
+    .from("flat_members")
+    .update({ display_name: name })
+    .eq("user_id", userId)
+    .select("user_id");
+  if (error || !data?.length) return { ...prev, error: "Couldn't save your name. Try again." };
+
+  revalidatePath("/app");
+  return { resetKey: (prev.resetKey ?? 0) + 1 };
+}
+
 export async function setForfeit(prev: FormState, formData: FormData): Promise<FormState> {
   const { supabase } = await signedInClient();
 

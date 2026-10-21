@@ -197,11 +197,16 @@ begin
   values (public.generate_join_code())
   returning id into new_flat_id;
 
+  -- A first guess at a name: the first word of the email's local part, letters only,
+  -- capitalised ("maria.gonzalez.2023@..." -> "Maria"). Members can change it on /app.
   insert into public.flat_members (user_id, flat_id, display_name)
   values (
     new.id,
     new_flat_id,
-    left(coalesce(nullif(split_part(new.email, '@', 1), ''), 'Flatmate'), 40)
+    left(coalesce(
+      nullif(initcap(split_part(btrim(regexp_replace(split_part(new.email, '@', 1), '[^A-Za-z]+', ' ', 'g')), ' ', 1)), ''),
+      'Flatmate'
+    ), 40)
   );
 
   return new;
@@ -298,6 +303,14 @@ create policy "Members read their flatmates" on public.flat_members
   for select to authenticated
   using (flat_id = (select public.my_flat_id()));
 
+-- Only your own row, and the column grant below limits it to display_name, so nobody can
+-- move themselves into another flat this way.
+drop policy if exists "Members rename themselves" on public.flat_members;
+create policy "Members rename themselves" on public.flat_members
+  for update to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+
 drop policy if exists "Members read their flat's chores" on public.chores;
 create policy "Members read their flat's chores" on public.chores
   for select to authenticated
@@ -336,8 +349,9 @@ create policy "Members read their flat's forfeit changes" on public.forfeit_chan
 -- Grants ----------------------------------------------------------------------------------
 -- "Automatically expose new tables" is off, so access is granted explicitly, column by
 -- column where it matters: members can rename the flat and change the forfeit, but never
--- its join code, and can only choose a chore's title and who did it. Forfeit changes are
--- read-only; the trigger writes them.
+-- its join code, can change their own display name but not their flat, and can only
+-- choose a chore's title and who did it. Forfeit changes are read-only; the trigger
+-- writes them.
 
 revoke all on public.flats, public.flat_members, public.chores, public.forfeit_changes
   from anon, authenticated;
@@ -345,6 +359,7 @@ revoke all on public.flats, public.flat_members, public.chores, public.forfeit_c
 grant select on public.flats, public.flat_members, public.chores, public.forfeit_changes
   to authenticated;
 grant update (name, forfeit) on public.flats to authenticated;
+grant update (display_name) on public.flat_members to authenticated;
 grant insert (title, done_by) on public.chores to authenticated;
 grant delete on public.chores to authenticated;
 

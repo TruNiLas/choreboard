@@ -7,6 +7,7 @@ import { CopyButton } from "@/components/copy-button";
 import { ForfeitForm } from "@/components/forfeit-form";
 import { JoinForm } from "@/components/join-form";
 import { LeaderboardSlab } from "@/components/leaderboard-slab";
+import { NameForm } from "@/components/name-form";
 import { buttonLooks, Panel } from "@/components/ui";
 import { cleanJoinCode } from "@/lib/form-state";
 import { currentMonth, isWithinHours, madridDay, timeAgo } from "@/lib/month";
@@ -221,6 +222,7 @@ export default async function BoardPage({ searchParams }: PageProps<"/app">) {
               </p>
             )}
           </div>
+          <NameForm key={names.get(me) ?? ""} current={names.get(me) ?? ""} />
           {/* Keyed so the field shows the new value after joining another flat or after a
               flatmate changes it, instead of keeping a stale one that Save would write back. */}
           <ForfeitForm key={`${flat.id}:${flat.forfeit}`} flatId={flat.id} current={flat.forfeit} />
