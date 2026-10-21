@@ -36,7 +36,10 @@ export function DutiesSection({
       <h2 id="duties-title" className="font-display text-[2.25rem] sm:text-[2.75rem]">
         This week&rsquo;s duties
       </h2>
-      <p className="mt-1 text-muted">The jobs your flat agreed on. Tick one off and the points are yours.</p>
+      <p className="mt-1 text-muted">
+        The jobs your flat agreed on. Tick one off and the points are yours, or nudge a flatmate whose job is still
+        open. Only they see it.
+      </p>
 
       {sorted.length === 0 ? (
         <p className="mt-3 text-muted">
@@ -90,7 +93,13 @@ function DutyRow({
   const day = WEEKDAYS[duty.weekday - 1];
   const mine = duty.assignee === me;
   const due = !doneBy && duty.weekday <= today;
-  const whatsapp = encodeURIComponent(`Friendly nudge from Choreboard: “${duty.title}” was on your list for ${day}.`);
+  // Any flatmate's open duty can be nudged: overdue ones, and upcoming ones as a heads-up.
+  const canNudge = !doneBy && !mine;
+  const whatsapp = encodeURIComponent(
+    due
+      ? `Friendly nudge from Choreboard: “${duty.title}” was on your list for ${day}.`
+      : `Friendly heads-up from Choreboard: “${duty.title}” is on your list for ${day}.`,
+  );
 
   let status: { text: string; className: string };
   if (doneBy) {
@@ -134,13 +143,20 @@ function DutyRow({
             look={mine && due ? "primary" : "quiet"}
           />
         )}
-        {due && !mine &&
+        {canNudge &&
           (nudged ? (
-            <span className="px-3 text-sm text-muted">Nudged today</span>
+            <span className="px-3 text-sm font-semibold text-muted">Nudged today</span>
           ) : (
-            <IdActionButton action={nudgeDuty} name="duty_id" value={duty.id} label="Nudge" pendingLabel="Nudging…" />
+            <IdActionButton
+              action={nudgeDuty}
+              name="duty_id"
+              value={duty.id}
+              label={`Nudge ${nameOf(duty.assignee)}`}
+              pendingLabel="Nudging…"
+              look="secondary"
+            />
           ))}
-        {due && !mine && (
+        {canNudge && (
           <a
             href={`https://wa.me/?text=${whatsapp}`}
             target="_blank"

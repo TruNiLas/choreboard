@@ -8,6 +8,7 @@ type Action = (prev: FormState, formData: FormData) => Promise<FormState>;
 
 const looks = {
   primary: "btn btn-primary min-h-11 px-5",
+  secondary: "btn btn-secondary min-h-11 px-4",
   quiet: "rounded-full px-3 text-muted transition-colors hover:bg-surface hover:text-foreground",
   danger: "rounded-full px-3 text-danger transition-colors hover:bg-surface",
 } as const;
